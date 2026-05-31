@@ -7401,41 +7401,6 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     <div class="meta">Verbrauch · Status · Reset — alle 30s aktualisiert</div>
   </div>
   <div id="keysDashboard" style="display:grid;gap:16px;">Lade…</div>
-  <div style="margin-top:16px;background:rgba(255,255,255,0.03);border:1px solid var(--line,rgba(255,255,255,0.1));border-radius:10px;padding:14px;">
-    <div style="font-size:12px;font-weight:700;margin-bottom:6px;">🔑 Eigene Keys eintragen (bleiben nur in DIESEM Browser, nicht im Code)</div>
-    <div style="font-size:10.5px;color:var(--text-2,#9ca3af);margin-bottom:8px;">Tavily-Keys: einer pro Zeile. Gemini/EIA optional. Nach Speichern lädt die Seite neu.</div>
-    <textarea id="pubTavilyKeys" placeholder="tvly-dev-..." style="width:100%;height:90px;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid var(--line,rgba(255,255,255,0.1));color:var(--text-0,#e5e7eb);border-radius:6px;padding:8px;font-family:monospace;font-size:11px;"></textarea>
-    <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;">
-      <input id="pubGeminiKey" placeholder="Gemini-Key (AIza...) optional" style="flex:1;min-width:200px;background:rgba(0,0,0,0.4);border:1px solid var(--line,rgba(255,255,255,0.1));color:var(--text-0,#e5e7eb);border-radius:6px;padding:7px;font-size:11px;">
-      <input id="pubEiaKey" placeholder="EIA-Key optional" style="flex:1;min-width:160px;background:rgba(0,0,0,0.4);border:1px solid var(--line,rgba(255,255,255,0.1));color:var(--text-0,#e5e7eb);border-radius:6px;padding:7px;font-size:11px;">
-      <button id="pubKeysSave" style="background:linear-gradient(135deg,#a78bfa,#22d3ee);color:#000;border:none;border-radius:6px;padding:8px 16px;font-size:11px;font-weight:700;cursor:pointer;">Speichern &amp; neu laden</button>
-    </div>
-  </div>
-  <script>
-  (function(){
-    function fill(){
-      try {
-        var t = JSON.parse(localStorage.getItem('tavily_keys_v1')) || [];
-        var ta = document.getElementById('pubTavilyKeys'); if (ta) ta.value = t.join('\n');
-        var g = localStorage.getItem('gemini_api_key_v1'); var ge = document.getElementById('pubGeminiKey'); if (g && ge) ge.value = g;
-        var e = localStorage.getItem('eia_key'); var ee = document.getElementById('pubEiaKey'); if (e && ee) ee.value = e;
-      } catch(err) {}
-    }
-    document.addEventListener('DOMContentLoaded', function(){
-      fill();
-      var b = document.getElementById('pubKeysSave');
-      if (b) b.addEventListener('click', function(){
-        try {
-          var keys = (document.getElementById('pubTavilyKeys').value || '').split('\n').map(function(s){return s.trim();}).filter(Boolean);
-          localStorage.setItem('tavily_keys_v1', JSON.stringify(keys));
-          var g = (document.getElementById('pubGeminiKey').value || '').trim(); if (g) localStorage.setItem('gemini_api_key_v1', g);
-          var e = (document.getElementById('pubEiaKey').value || '').trim(); if (e) localStorage.setItem('eia_key', e);
-          location.reload();
-        } catch(err) { (window.showToast||window.alert)('Speichern fehlgeschlagen.'); }
-      });
-    });
-  })();
-  </script>
 </div>
 <script>
 (function() {
@@ -14806,11 +14771,21 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
 <!-- ====== TAVILY KEY POOL + ROTATION (multi-key, auto-failover on quota) ====== -->
 <script>
 (function() {
-  // ÖFFENTLICHE VERSION: keine Keys im Code. Aus localStorage laden (im Browser eingeben).
-  const TAVILY_KEYS = (function(){
-    try { var k = JSON.parse(localStorage.getItem('tavily_keys_v1')); if (Array.isArray(k) && k.length) return k; } catch(e) {}
-    return [];
-  })();
+  const TAVILY_KEYS = [
+    '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',
+    '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',
+    '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',
+    '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',
+    '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',
+    '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',
+    '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',
+    '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',
+    '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',
+    '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',
+    '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',
+    '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',
+    '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'
+  ];
   const STATE_KEY = 'tavily_state_v2';
   const BURN_RECHECK_MS = 6 * 3600 * 1000; // re-test burned keys every 6h
   // FIX: Keine Keys mehr vorab als verbraucht markieren. Ein Key gilt erst als
