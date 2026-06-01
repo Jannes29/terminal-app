@@ -2534,6 +2534,7 @@
   <a data-target="18" class="bias-link" style="color:#22c55e;border-color:rgba(34,197,94,0.5);background:rgba(34,197,94,0.12);">15 Performance · REAL 📈</a>
   <a data-target="20" class="bias-link" style="color:#22d3ee;border-color:rgba(34,211,238,0.5);background:rgba(34,211,238,0.12);">🔑 16 Keys &amp; Quota</a>
   <a data-target="21" class="bias-link" style="color:#a78bfa;border-color:rgba(167,139,250,0.6);background:rgba(167,139,250,0.15);" onclick="window.renderStratLab&&window.renderStratLab()">🧪 17 Strategie-Lab</a>
+  <a data-target="22" class="bias-link" style="color:#22c55e;border-color:rgba(34,197,94,0.5);background:rgba(34,197,94,0.12);">📅 18 Seasonality</a>
   <a class="bias-link" style="cursor:pointer;color:#a78bfa;border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.12);" onclick="var c=document.getElementById('sec-cockpit');if(c)c.scrollIntoView({behavior:'smooth',block:'start'});var j=document.querySelector('.tc-tab[data-tc-tab=journal]');if(j)j.click();">📓 Trade-Journal</a>
 </nav>
 
@@ -7729,6 +7730,345 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   setTimeout(renderAll, 2500);
 })();
 </script>
+
+<!-- ====== SECTION 18: SEASONALITY (echte Yahoo-Historie, 5/10/15/20/25J) ====== -->
+<div class="section" id="sec-seasonality">
+  <div class="section-head">
+    <h2>18 · <em>Seasonality</em> <span style="font-size:11px;color:#22c55e;">📅 25J HISTORIE · ECHTE DATEN</span></h2>
+    <div class="meta">Saisonale Muster aus echten Yahoo-Tageskursen · 5 / 10 / 15 / 20 / 25 Jahre</div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+    <select id="seaAsset" style="background:rgba(0,0,0,0.4);border:1px solid var(--line,#1f2a44);color:var(--text-0,#e5e7eb);border-radius:6px;padding:7px 10px;font-size:12px;"></select>
+    <div id="seaHorizons" style="display:flex;gap:4px;">
+      <button class="sea-h" data-y="5" style="background:rgba(255,255,255,0.06);color:#cbd5e1;border:1px solid var(--line,#1f2a44);border-radius:5px;padding:6px 10px;font-size:11px;cursor:pointer;">5J</button>
+      <button class="sea-h" data-y="10" style="background:rgba(255,255,255,0.06);color:#cbd5e1;border:1px solid var(--line,#1f2a44);border-radius:5px;padding:6px 10px;font-size:11px;cursor:pointer;">10J</button>
+      <button class="sea-h" data-y="15" style="background:rgba(34,211,238,0.25);color:#fff;border:1px solid #22d3ee;border-radius:5px;padding:6px 10px;font-size:11px;cursor:pointer;">15J</button>
+      <button class="sea-h" data-y="20" style="background:rgba(255,255,255,0.06);color:#cbd5e1;border:1px solid var(--line,#1f2a44);border-radius:5px;padding:6px 10px;font-size:11px;cursor:pointer;">20J</button>
+      <button class="sea-h" data-y="25" style="background:rgba(255,255,255,0.06);color:#cbd5e1;border:1px solid var(--line,#1f2a44);border-radius:5px;padding:6px 10px;font-size:11px;cursor:pointer;">25J</button>
+    </div>
+    <button id="seaLoad" style="background:linear-gradient(135deg,#22c55e,#22d3ee);color:#000;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;">📥 Laden</button>
+    <div style="display:flex;align-items:center;gap:5px;margin-left:auto;flex-wrap:wrap;">
+      <button id="seaPrev7" title="Ende 7 Tage zurück (Start bleibt fest)" style="background:rgba(255,255,255,0.06);color:#cbd5e1;border:1px solid var(--line,#1f2a44);border-radius:5px;padding:6px 8px;font-size:11px;cursor:pointer;">⏪</button>
+      <button id="seaPrev1" title="Ende 1 Tag zurück (Start bleibt fest)" style="background:rgba(255,255,255,0.06);color:#cbd5e1;border:1px solid var(--line,#1f2a44);border-radius:5px;padding:6px 8px;font-size:11px;cursor:pointer;">◀</button>
+      <input type="date" id="seaStart" title="Start (Tag/Monat zählt)" style="background:rgba(0,0,0,0.4);border:1px solid var(--line,#1f2a44);color:#e5e7eb;border-radius:5px;padding:5px 7px;font-size:11px;color-scheme:dark;">
+      <span style="font-size:11px;color:#9ca3af;">→</span>
+      <input type="date" id="seaEnd" title="Ende (Tag/Monat zählt)" style="background:rgba(0,0,0,0.4);border:1px solid var(--line,#1f2a44);color:#e5e7eb;border-radius:5px;padding:5px 7px;font-size:11px;color-scheme:dark;">
+      <button id="seaNext1" title="Ende 1 Tag vor (Start bleibt fest)" style="background:rgba(255,255,255,0.06);color:#cbd5e1;border:1px solid var(--line,#1f2a44);border-radius:5px;padding:6px 8px;font-size:11px;cursor:pointer;">▶</button>
+      <button id="seaNext7" title="Ende 7 Tage vor (Start bleibt fest)" style="background:rgba(255,255,255,0.06);color:#cbd5e1;border:1px solid var(--line,#1f2a44);border-radius:5px;padding:6px 8px;font-size:11px;cursor:pointer;">⏩</button>
+      <span id="seaWindow" style="font-size:11px;font-weight:700;color:#22d3ee;min-width:70px;text-align:center;">—</span>
+    </div>
+  </div>
+  <div id="seaStatus" style="font-size:11px;color:var(--text-2,#9ca3af);margin-bottom:12px;">Asset wählen — Daten werden live von Yahoo geladen.</div>
+  <div style="display:grid;grid-template-columns:1.7fr 1fr;gap:16px;margin-bottom:16px;">
+    <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line,#1f2a44);border-radius:10px;padding:14px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px;">📈 Seasonality Graph · Ø-Verlauf übers Jahr (indexiert 100)</div>
+      <div style="height:260px;"><canvas id="seaGraph"></canvas></div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line,#1f2a44);border-radius:10px;padding:14px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:10px;">📊 Seasonality Stats · gewähltes Fenster</div>
+      <div id="seaStats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">—</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line,#1f2a44);border-radius:10px;padding:14px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px;">📋 Seasonality Table · Jahr für Jahr</div>
+      <div id="seaTable" style="max-height:300px;overflow-y:auto;">—</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line,#1f2a44);border-radius:10px;padding:14px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px;">🗓 History Chart · 5 / 10 / 15 / 20 J übereinander</div>
+      <div style="height:260px;"><canvas id="seaHist"></canvas></div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  // Volles Asset-Universum des Terminals, gruppiert. Jedes Asset zieht seine EIGENE Yahoo-Historie.
+  const SEA_GROUPS = [
+    ['FX Majors', {
+      'EUR/USD':'EURUSD=X','GBP/USD':'GBPUSD=X','USD/JPY':'USDJPY=X','USD/CHF':'USDCHF=X',
+      'AUD/USD':'AUDUSD=X','NZD/USD':'NZDUSD=X','USD/CAD':'USDCAD=X'
+    }],
+    ['FX Crosses', {
+      'EUR/GBP':'EURGBP=X','EUR/JPY':'EURJPY=X','EUR/CHF':'EURCHF=X','EUR/AUD':'EURAUD=X','EUR/NZD':'EURNZD=X','EUR/CAD':'EURCAD=X',
+      'GBP/JPY':'GBPJPY=X','GBP/CHF':'GBPCHF=X','GBP/AUD':'GBPAUD=X','GBP/NZD':'GBPNZD=X','GBP/CAD':'GBPCAD=X',
+      'AUD/JPY':'AUDJPY=X','AUD/NZD':'AUDNZD=X','AUD/CHF':'AUDCHF=X','AUD/CAD':'AUDCAD=X',
+      'NZD/JPY':'NZDJPY=X','NZD/CHF':'NZDCHF=X','NZD/CAD':'NZDCAD=X',
+      'CAD/JPY':'CADJPY=X','CAD/CHF':'CADCHF=X','CHF/JPY':'CHFJPY=X'
+    }],
+    ['Indizes', {
+      'DXY (Dollar-Index)':'DX-Y.NYB','NAS100':'^NDX','S&P 500':'^GSPC','DAX':'^GDAXI',
+      'FTSE 100':'^FTSE','Dow Jones':'^DJI','Nikkei 225':'^N225','VIX':'^VIX'
+    }],
+    ['Metalle', {
+      'Gold (XAU)':'GC=F','Silber (XAG)':'SI=F','Kupfer (XCU)':'HG=F','Platin (XPT)':'PL=F','Palladium (XPD)':'PA=F'
+    }],
+    ['Energie', {
+      'WTI Öl':'CL=F','Brent Öl':'BZ=F','Erdgas (NatGas)':'NG=F'
+    }],
+    ['Agrar', {
+      'Weizen':'ZW=F','Mais':'ZC=F','Sojabohnen':'ZS=F','Kaffee':'KC=F','Zucker':'SB=F','Kakao':'CC=F','Baumwolle':'CT=F'
+    }],
+    ['Krypto', {
+      'Bitcoin':'BTC-USD','Ethereum':'ETH-USD','Solana':'SOL-USD'
+    }]
+  ];
+  const SYM = Object.assign({}, ...SEA_GROUPS.map(g=>g[1]));
+  // Asset-individuelle Nachkommastellen ~5 signifikante Stellen: EUR/USD 1.1645·4 | JPY-Cross 189.45·2 | Gold 2015.4·1 | BTC 102000·0 | NZD 0.65000·5
+  function priceDec(v){ v=Math.abs(v); if(!isFinite(v)||v===0) return 4; return Math.max(0, Math.min(6, 4-Math.floor(Math.log10(v)))); }
+  function fmtP(v){ return v.toFixed(priceDec(v)); }
+  const PROXIES = [
+    u=>'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u),
+    u=>'https://corsproxy.io/?'+encodeURIComponent(u),
+    u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u)
+  ];
+  const MONTH_START=[1,32,60,91,121,152,182,213,244,274,305,335];
+  const MONTHS=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  let series=null, curSym=null, curName=null, curHorizon=15, winStart=null, winEnd=null;
+  let gChart=null, hChart=null;
+
+  function status(t,c){ const e=document.getElementById('seaStatus'); if(e){e.textContent=t; e.style.color=c||'var(--text-2,#9ca3af)';} }
+  function doy(d){ const s=new Date(d.getFullYear(),0,0); return Math.floor((d-s)/86400000); }
+  function mean(a){ return a.length? a.reduce((x,y)=>x+y,0)/a.length : 0; }
+  function std(a){ if(a.length<2) return 0; const m=mean(a); return Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/(a.length-1)); }
+  function fmtD(d){ return d.toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'2-digit'}); }
+  function fmtMD(d){ return d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'}); }
+
+  async function fetchJSON(url){
+    const tries=[u=>u].concat(PROXIES);
+    for(const t of tries){
+      try{
+        const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),16000);
+        const r=await fetch(t(url),{cache:'no-store',signal:ctrl.signal});
+        clearTimeout(to);
+        if(r.ok){ const j=await r.json(); if(j && j.chart && j.chart.result) return j; }
+      }catch(e){}
+    }
+    return null;
+  }
+  function parseChart(j){
+    try{
+      const res=j.chart.result[0], ts=res.timestamp, q=res.indicators.quote[0];
+      const adj=(res.indicators.adjclose&&res.indicators.adjclose[0])?res.indicators.adjclose[0].adjclose:null;
+      const out=[];
+      for(let i=0;i<ts.length;i++){ const c=(adj&&adj[i]!=null)?adj[i]:(q.close?q.close[i]:null); if(c==null||!isFinite(c))continue; out.push({d:new Date(ts[i]*1000),c}); }
+      return out.length? out : null;
+    }catch(e){ return null; }
+  }
+  // Eigener Server-Proxy (Cloudflare Worker) – Yahoo blockt Browser-Proxies, dieser Worker holt die Daten serverseitig.
+  // period1/period2 erzwingt echte TAGESauflösung (range=max liefert nur Monatsdaten); cb=Cache-Buster gegen Edge-Cache.
+  const DATA_WORKER='https://kayser-data.mehmedkayser.workers.dev/';
+  async function fetchWorker(sym){
+    const p2=Math.floor(Date.now()/1000);
+    const p1=Math.floor(new Date(new Date().getFullYear()-30,0,1).getTime()/1000); // 30 Jahre Historie deckt 25J-Horizont
+    try{
+      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),25000);
+      const r=await fetch(DATA_WORKER+'?symbol='+encodeURIComponent(sym)+'&interval=1d&period1='+p1+'&period2='+p2+'&cb='+Date.now(),{cache:'no-store',signal:ctrl.signal});
+      clearTimeout(to);
+      if(r.ok){ const j=await r.json(); if(j && j.chart && j.chart.result) return j; }
+    }catch(e){}
+    return null;
+  }
+  async function loadSeries(sym){
+    const base='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym);
+    // 1) Eigener Worker mit echten Tagesdaten (zuverlässig, serverseitig)
+    status('Lade Tageshistorie…','#22d3ee');
+    let s=parseChart(await fetchWorker(sym));
+    if(s && s.length>200) return s;
+    // 2) Fallback: öffentliche Browser-Proxies (oft von Yahoo geblockt)
+    for(const iv of ['1d','1wk']){
+      status('Lade Historie ('+(iv==='1d'?'täglich':'wöchentlich')+')…','#22d3ee');
+      s=parseChart(await fetchJSON(base+'?range=max&interval='+iv));
+      if(s && s.length>200) return s;
+    }
+    return null;
+  }
+  function computeWindow(horizon){
+    if(!series||!series.length) return [];
+    const sMD=(winStart.getMonth()+1)*100+winStart.getDate();
+    const eMD=(winEnd.getMonth()+1)*100+winEnd.getDate();
+    const yNow=new Date().getFullYear(), rows=[];
+    for(let y=yNow-horizon; y<=yNow-1; y++){
+      const sT=new Date(y,winStart.getMonth(),winStart.getDate());
+      const eT=new Date(y,winEnd.getMonth(),winEnd.getDate());
+      if(eMD<sMD) eT.setFullYear(y+1);
+      let sIdx=series.findIndex(p=>p.d>=sT);
+      let eIdx=-1; for(let i=0;i<series.length;i++){ if(series[i].d<=eT) eIdx=i; else break; }
+      if(sIdx<0||eIdx<0||eIdx<=sIdx) continue;
+      const sP=series[sIdx].c, eP=series[eIdx].c; let hi=sP,lo=sP,td=0;
+      for(let i=sIdx;i<=eIdx;i++){ const c=series[i].c; if(c>hi)hi=c; if(c<lo)lo=c; td++; }
+      rows.push({y, sDate:series[sIdx].d, sP, eDate:series[eIdx].d, eP, profit:eP-sP, pct:(eP-sP)/sP*100, maxRise:(hi-sP)/sP*100, maxDrop:(lo-sP)/sP*100, td});
+    }
+    return rows;
+  }
+  function statBlock(rows){
+    if(!rows.length) return null;
+    const pcts=rows.map(r=>r.pct), avg=mean(pcts), vol=std(pcts);
+    const wr=rows.filter(r=>r.pct>0).length/rows.length*100;
+    let cal=Math.round((new Date(2001,winEnd.getMonth(),winEnd.getDate())-new Date(2001,winStart.getMonth(),winStart.getDate()))/86400000);
+    if(cal<0) cal+=365; cal+=1;
+    const annR=((1+avg/100)**(365/cal)-1)*100;
+    const annVol=vol*Math.sqrt(365/cal);
+    return {annR, annVol, avg, wr, cal, td:Math.round(mean(rows.map(r=>r.td))), vol, sharpe:(annVol>0.05? annR/annVol : null)};
+  }
+  function avgPath(horizon){
+    // Seasonax-Methode: pro Jahr ein lückenloser Tagespfad (Forward-Fill über Wochenenden/Feiertage),
+    // indexiert auf 100 am Jahresanfang. Erst danach über alle Jahre mitteln → GLATTE Kurve statt Sägezahn.
+    const yNow=new Date().getFullYear(), sum=new Array(367).fill(0), cnt=new Array(367).fill(0);
+    for(let y=yNow-horizon; y<=yNow-1; y++){
+      const yr=series.filter(p=>p.d.getFullYear()===y); if(yr.length<50) continue;
+      const base=yr[0].c;
+      const daily=new Array(367).fill(null);
+      for(const p of yr){ const k=doy(p.d); if(k>=1&&k<=366) daily[k]=p.c/base*100; }
+      // Forward-Fill: letzten bekannten Schlusskurs über Lücken tragen; Anfang mit erstem Wert auffüllen
+      let firstVal=null; for(let i=1;i<=366;i++){ if(daily[i]!=null){ firstVal=daily[i]; break; } }
+      let last=firstVal;
+      for(let i=1;i<=366;i++){
+        if(daily[i]!=null) last=daily[i];
+        if(last!=null){ sum[i]+=last; cnt[i]++; }
+      }
+    }
+    const path=[]; for(let i=1;i<=366;i++) path.push(cnt[i]? sum[i]/cnt[i] : null);
+    return path;
+  }
+  function monthLabels(){ const L=[]; for(let i=1;i<=366;i++){ const mi=MONTH_START.indexOf(i); L.push(mi>=0?MONTHS[mi]:''); } return L; }
+
+  function renderStats(s){
+    const host=document.getElementById('seaStats'); if(!host) return;
+    if(!s){ host.innerHTML='<div style="grid-column:1/-1;color:var(--text-2,#9ca3af);font-size:11px;">Keine Daten für dieses Fenster.</div>'; return; }
+    function card(lbl,val,clr){ return `<div style="background:rgba(0,0,0,0.25);border-radius:8px;padding:9px 11px;"><div style="font-size:9.5px;color:var(--text-2,#9ca3af);letter-spacing:0.3px;">${lbl}</div><div style="font-size:17px;font-weight:800;color:${clr||'#e5e7eb'};">${val}</div></div>`; }
+    const g='#22c55e', r='#ef4444', c='#22d3ee';
+    host.innerHTML =
+      card('Annualized Return',(s.annR>=0?'+':'')+s.annR.toFixed(2)+'%', s.annR>=0?g:r)+
+      card('Volatility', s.annVol.toFixed(2)+'%', '#fbbf24')+
+      card('Average Return',(s.avg>=0?'+':'')+s.avg.toFixed(2)+'%', s.avg>=0?g:r)+
+      card('Winning Trades', s.wr.toFixed(0)+'%', s.wr>=55?g:s.wr>=45?'#fbbf24':r)+
+      card('Calendar Days', s.cal, c)+
+      card('Trading Days', s.td, c)+
+      card('Standard Deviation', s.vol.toFixed(2)+'%', '#fbbf24')+
+      card('Sharpe Ratio', s.sharpe==null?'—':s.sharpe.toFixed(2), s.sharpe!=null&&s.sharpe>=1?g:'#e5e7eb');
+  }
+  function renderTable(rows){
+    const host=document.getElementById('seaTable'); if(!host) return;
+    if(!rows.length){ host.innerHTML='<div style="color:var(--text-2,#9ca3af);font-size:11px;padding:8px;">Keine Jahre im Fenster.</div>'; return; }
+    let h='<table style="width:100%;border-collapse:collapse;font-size:10.5px;"><thead><tr style="color:var(--text-2,#9ca3af);text-align:left;font-size:9.5px;">'+
+      '<th style="padding:4px 6px;">Start</th><th>Start-K.</th><th>Ende</th><th>End-K.</th><th>Profit%</th><th>Max+</th><th>Max−</th></tr></thead><tbody>';
+    rows.slice().reverse().forEach(r=>{
+      const pc=r.pct>=0?'#22c55e':'#ef4444';
+      h+=`<tr style="border-top:1px solid rgba(255,255,255,0.05);">
+        <td style="padding:4px 6px;">${fmtMD(r.sDate)} '${String(r.y).slice(2)}</td>
+        <td style="color:var(--text-2,#9ca3af);">${fmtP(r.sP)}</td>
+        <td>${fmtMD(r.eDate)}</td>
+        <td style="color:var(--text-2,#9ca3af);">${fmtP(r.eP)}</td>
+        <td style="color:${pc};font-weight:700;">${r.pct>=0?'+':''}${r.pct.toFixed(2)}%</td>
+        <td style="color:#22c55e;">+${r.maxRise.toFixed(2)}%</td>
+        <td style="color:#ef4444;">${r.maxDrop.toFixed(2)}%</td></tr>`;
+    });
+    host.innerHTML=h+'</tbody></table>';
+  }
+  function renderGraph(){
+    if(typeof Chart==='undefined') return;
+    const path=avgPath(curHorizon), labels=monthLabels();
+    const sD=doy(new Date(2025,winStart.getMonth(),winStart.getDate()));
+    const eD=doy(new Date(2025,winEnd.getMonth(),winEnd.getDate()));
+    const hl=path.map((v,i)=>{ const k=i+1; return (eD>=sD)?((k>=sD&&k<=eD)?v:null):((k>=sD||k<=eD)?v:null); });
+    const ctx=document.getElementById('seaGraph'); if(!ctx) return; if(gChart) gChart.destroy();
+    // Zwei senkrechte weiße Linien grenzen das gewählte Fenster ein (Start & Ende)
+    const winMarkers={ id:'winMarkers', afterDatasetsDraw(chart){
+      const x=chart.scales.x, area=chart.chartArea; if(!x||!area) return;
+      const cc=chart.ctx;
+      [[sD,'Start'],[eD,'Ende']].forEach(([d,lbl])=>{
+        const px=x.getPixelForValue(d-1);
+        cc.save();
+        cc.beginPath(); cc.moveTo(px,area.top); cc.lineTo(px,area.bottom);
+        cc.lineWidth=1.5; cc.strokeStyle='rgba(255,255,255,0.92)'; cc.setLineDash([5,3]); cc.stroke();
+        cc.setLineDash([]); cc.fillStyle='rgba(255,255,255,0.92)'; cc.font='600 9px sans-serif'; cc.textAlign='center';
+        cc.fillText(lbl, px, area.top-3);
+        cc.restore();
+      });
+    }};
+    gChart=new Chart(ctx,{type:'line',plugins:[winMarkers],data:{labels,datasets:[
+      {label:'Ø-Verlauf '+curHorizon+'J',data:path,borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,0.08)',borderWidth:1.5,pointRadius:0,fill:true,tension:0.1,spanGaps:true},
+      {label:'Fenster',data:hl,borderColor:'#fbbf24',borderWidth:3,pointRadius:0,fill:false,spanGaps:false}
+    ]},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:12}},
+      scales:{y:{ticks:{color:'#9ca3af'},grid:{color:'rgba(255,255,255,0.06)'}},
+        x:{ticks:{color:'#9ca3af',autoSkip:false,maxRotation:0,callback:(v,i)=>labels[i]||''},grid:{display:false}}},
+      plugins:{legend:{labels:{color:'#cbd5e1',boxWidth:12}},tooltip:{callbacks:{title:items=>{const i=items[0].dataIndex;let mi=0;for(let m=11;m>=0;m--){if(i+1>=MONTH_START[m]){mi=m;break;}}return MONTHS[mi]+' ~Tag '+(i+1);},label:c=>c.dataset.label+': '+(c.raw==null?'—':c.raw.toFixed(2))}}}}});
+  }
+  function renderHist(){
+    if(typeof Chart==='undefined') return;
+    const labels=monthLabels();
+    const defs=[[5,'#22c55e'],[10,'#3b82f6'],[15,'#ef4444'],[20,'#fbbf24']];
+    const ds=defs.map(([y,clr])=>({label:y+'J',data:avgPath(y),borderColor:clr,borderWidth:1.3,pointRadius:0,fill:false,tension:0.1,spanGaps:true}));
+    const ctx=document.getElementById('seaHist'); if(!ctx) return; if(hChart) hChart.destroy();
+    hChart=new Chart(ctx,{type:'line',data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{ticks:{color:'#9ca3af'},grid:{color:'rgba(255,255,255,0.06)'}},
+        x:{ticks:{color:'#9ca3af',autoSkip:false,maxRotation:0,callback:(v,i)=>labels[i]||''},grid:{display:false}}},
+      plugins:{legend:{labels:{color:'#cbd5e1',boxWidth:12}}}}});
+  }
+  function isoD(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function winDays(){ let n=Math.round((new Date(2001,winEnd.getMonth(),winEnd.getDate())-new Date(2001,winStart.getMonth(),winStart.getDate()))/86400000); if(n<0)n+=365; return n+1; }
+  function updateWindowLabel(){
+    const e=document.getElementById('seaWindow'); if(e) e.textContent=winDays()+' Tage';
+    const a=document.getElementById('seaStart'), b=document.getElementById('seaEnd');
+    if(a) a.value=isoD(winStart); if(b) b.value=isoD(winEnd);
+  }
+  function renderAll(){
+    if(!series){ return; }
+    updateWindowLabel();
+    const rows=computeWindow(curHorizon);
+    renderStats(statBlock(rows)); renderTable(rows); renderGraph(); renderHist();
+    status(`${curName}: ${series.length} Tageskurse seit ${series[0].d.getFullYear()} · ${rows.length} Jahre im Fenster (${curHorizon}J)`, '#22c55e');
+  }
+  async function selectAsset(name){
+    curName=name; curSym=SYM[name];
+    status('Lade 25 Jahre Historie für '+name+'…','#22d3ee');
+    series=await loadSeries(curSym);
+    if(!series){ status('Konnte Daten für '+name+' nicht laden (Proxy/Netz). Anderes Asset oder später erneut.','#ef4444'); return; }
+    renderAll();
+  }
+  // Nur das ENDE verschieben – der Startpunkt bleibt fest, das Fenster zieht nicht mit
+  function shiftEnd(days){
+    const ne=new Date(winEnd.getTime()+days*86400000);
+    // mind. 1 Tag Fenster behalten (Ende nicht vor den Start schieben)
+    if(ne.getTime() < winStart.getTime()){ winEnd=new Date(winStart.getTime()); }
+    else { winEnd=ne; }
+    renderAll();
+  }
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const sel=document.getElementById('seaAsset');
+    SEA_GROUPS.forEach(([grp,items])=>{
+      const og=document.createElement('optgroup'); og.label=grp;
+      Object.keys(items).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; og.appendChild(o); });
+      sel.appendChild(og);
+    });
+    const now=new Date(); winStart=new Date(now.getFullYear(),now.getMonth(),now.getDate()); winEnd=new Date(winStart.getTime()+8*86400000);
+    updateWindowLabel();
+    sel.addEventListener('change', ()=>selectAsset(sel.value));
+    const ld=document.getElementById('seaLoad'); if(ld) ld.addEventListener('click', ()=>selectAsset(sel.value));
+    document.querySelectorAll('#seaHorizons .sea-h').forEach(b=>b.addEventListener('click',()=>{
+      curHorizon=parseInt(b.dataset.y,10);
+      document.querySelectorAll('#seaHorizons .sea-h').forEach(x=>{x.style.background='rgba(255,255,255,0.06)';x.style.color='#cbd5e1';x.style.borderColor='var(--line,#1f2a44)';});
+      b.style.background='rgba(34,211,238,0.25)'; b.style.color='#fff'; b.style.borderColor='#22d3ee';
+      if(series) renderAll();
+    }));
+    const bind=(id,days)=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',()=>{ if(series) shiftEnd(days); }); };
+    bind('seaPrev7',-7); bind('seaPrev1',-1); bind('seaNext1',1); bind('seaNext7',7);
+    const refYr=now.getFullYear();
+    const onDate=()=>{
+      const a=document.getElementById('seaStart'), b=document.getElementById('seaEnd');
+      if(!a.value||!b.value) return;
+      const [ya,ma,da]=a.value.split('-').map(Number), [yb,mb,db]=b.value.split('-').map(Number);
+      winStart=new Date(refYr,ma-1,da); winEnd=new Date(refYr,mb-1,db);
+      if(series) renderAll(); else updateWindowLabel();
+    };
+    const sd=document.getElementById('seaStart'), ed=document.getElementById('seaEnd');
+    if(sd) sd.addEventListener('change',onDate); if(ed) ed.addEventListener('change',onDate);
+    // Auto-Laden beim Start: Standard-Asset direkt mit echten Daten füllen
+    selectAsset(sel.value);
+  });
+})();
+</script>
+
 
 <!-- ====== COUNT-SYNC: Headline-Zahlen dynamisch aus tatsächlichen Karten ====== -->
 <script>
