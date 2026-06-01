@@ -15693,7 +15693,36 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   // Sentiment weight = 0.20 of final score (Tavily-driven), fundamentals = 0.80
   // V2 routing: research-backed factor model takes over when BIAS_ENGINE_VERSION = 'V2' (default).
   // Set window.BIAS_ENGINE_VERSION = 'V1' in DevTools to revert to legacy heuristic.
-  function computeClassScores(f, regime) {
+  // ── Bias-Glättung: zeitgewichteter EMA über die Roh-Scores. Verhindert, dass die
+  // 30/60/90-Tage-Bias bei jedem 60-Sekunden-Refresh kippt. Echte mehrtägige Trends kommen
+  // weiterhin durch, aber Intraday-Rauschen wird gefiltert. τ≈6h → ~15%/h · ~63%/6h · ~98%/24h
+  // Annäherung. Persistiert in localStorage, damit die Bias über Reloads hinweg stabil bleibt.
+  function smoothClassScores(raw){
+    if(!raw || typeof raw!=='object') return raw;
+    const TAU_MS = 6*3600*1000;
+    const now = Date.now();
+    let prev = window.__CS_SMOOTH;
+    if(!prev){ try{ const p=JSON.parse(localStorage.getItem('cs_smooth_v1')||'null'); if(p && p.v) prev=p; }catch(e){ if(window.DEBUG)console.warn('[caught]',e); } }
+    const prevV = (prev && prev.v) ? prev.v : null;
+    const prevTs = (prev && prev.ts) ? prev.ts : now;
+    const dt = Math.max(0, now - prevTs);
+    const a = prevV ? (1 - Math.exp(-dt / TAU_MS)) : 1; // Gewicht des neuen Rohwerts
+    const out = {};
+    const keys = new Set(Object.keys(raw));
+    if(prevV) Object.keys(prevV).forEach(k=>keys.add(k));
+    keys.forEach(k=>{
+      const r = raw[k];
+      if(r==null){ out[k] = (prevV && prevV[k]!=null) ? prevV[k] : null; return; }
+      out[k] = (prevV && prevV[k]!=null) ? (prevV[k] + a*(r - prevV[k])) : r;
+    });
+    window.__CS_SMOOTH = { v: out, ts: now };
+    try{ localStorage.setItem('cs_smooth_v1', JSON.stringify(window.__CS_SMOOTH)); }catch(e){ if(window.DEBUG)console.warn('[caught]',e); }
+    return out;
+  }
+  function computeClassScores(f, regime){
+    return smoothClassScores(computeClassScoresRaw(f, regime));
+  }
+  function computeClassScoresRaw(f, regime) {
     if ((window.BIAS_ENGINE_VERSION || 'V2') === 'V2' && typeof computeClassScoresFactorModel === 'function') {
       return computeClassScoresFactorModel(f, regime);
     }
