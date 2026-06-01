@@ -7480,12 +7480,10 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       html += card('🔍 Tavily AI-Search', 'News-/Sentiment-Anreicherung · monatlicher Reset', body);
     }
 
-    // --- GEMINI ---
-    let gemKey = null;
-    try { gemKey = localStorage.getItem('gemini_api_key_v1'); } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
-    html += card('✨ Google Gemini', 'AI-Hub · Free-Tier resettet täglich',
-      `<div style="font-size:12px;">Status: ${gemKey ? '<span style="color:#22c55e;">🟢 konfiguriert</span> <span style="font-family:monospace;color:#9ca3af;">'+mask(gemKey)+'</span>' : '<span style="color:#9ca3af;">⚪ nicht gesetzt</span>'}</div>
-       <div style="margin-top:6px;font-size:10px;color:var(--text-2,#9ca3af);">Free-Tier: ~Reset in ${daysToMidnightUTC()} (Tageslimit, UTC). Kein clientseitiger Verbrauchszähler — Google liefert keine Restmenge zurück.</div>`);
+    // --- GEMINI (serverseitig über Cloudflare-Worker, Key als Secret) ---
+    html += card('✨ Google Gemini', 'AI-Hub · serverseitig über Worker',
+      `<div style="font-size:12px;">Status: <span style="color:#22c55e;">🟢 serverseitig</span> <span style="font-family:monospace;color:#9ca3af;">kayser-data Worker · GEMINI_KEY Secret</span></div>
+       <div style="margin-top:6px;font-size:10px;color:var(--text-2,#9ca3af);">Key liegt verschlüsselt im Cloudflare-Worker, nie im Code → kann nicht geleakt werden. Free-Tier: ~Reset in ${daysToMidnightUTC()} (Tageslimit, UTC).</div>`);
 
     // --- EIA ---
     let eiaKey = null;
@@ -20440,11 +20438,10 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   const HIST_STORAGE = 'ai_chat_history_v1';
   // Model-Cascade: bei Quota-Fehler nächstes Modell probieren
   const MODELS = ['gemini-2.5-flash','gemini-flash-latest','gemini-2.0-flash','gemini-2.0-flash-lite','gemini-2.5-flash-lite'];
-  const DEFAULT_KEY = 'AIzaSyBX2uzfEQyPskwjG-5A8GJG_BbYxUpI4vU';
-  try {
-    if (!localStorage.getItem(KEY_STORAGE)) localStorage.setItem(KEY_STORAGE, DEFAULT_KEY);
-  } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
-  const ENDPOINT = (model, key) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+  // KI läuft jetzt über den eigenen Cloudflare-Worker: der Gemini-Key liegt dort serverseitig als
+  // verschlüsseltes Secret (env.GEMINI_KEY) und ist NIE im öffentlichen Code → kann nicht geleakt/gesperrt werden.
+  const AI_WORKER = 'https://kayser-data.mehmedkayser.workers.dev/';
+  const ENDPOINT = (model) => AI_WORKER + '?ai=1&model=' + encodeURIComponent(model);
   const btn = document.getElementById('aiChatBtn');
   const panel = document.getElementById('aiChatPanel');
   const body = document.getElementById('aiBody');
@@ -20563,8 +20560,6 @@ Halte dich an dieses Template aber sei flexibel — wenn User generelle Fragen s
     return parts.join('\n');
   }
   async function callGemini(userMsg) {
-    const key = loadKey();
-    if (!key) { showSettings(); return null; }
     const hist = loadHist();
     const contents = [];
     hist.forEach(m => { contents.push({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }); });
@@ -20579,7 +20574,7 @@ Halte dich an dieses Template aber sei flexibel — wenn User generelle Fragen s
     // Model-Cascade: try each model on quota/availability error
     for (const model of MODELS) {
       try {
-        const r = await fetch(ENDPOINT(model, key), {
+        const r = await fetch(ENDPOINT(model), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body
         });
         if (r.ok) {
@@ -20606,7 +20601,6 @@ Halte dich an dieses Template aber sei flexibel — wenn User generelle Fragen s
   async function handleSend() {
     const msg = input.value.trim();
     if (!msg) return;
-    if (!loadKey()) { showSettings(); return; }
     input.value = ''; input.style.height = 'auto'; send.disabled = true;
     const hist = loadHist();
     hist.push({ role: 'user', content: msg, ts: Date.now() });
@@ -20671,7 +20665,7 @@ Halte dich an dieses Template aber sei flexibel — wenn User generelle Fragen s
   btn.addEventListener('click', () => {
     panel.classList.toggle('open');
     if (panel.classList.contains('open')) {
-      if (!loadKey()) showSettings(); else renderHist();
+      renderHist();
       renderSuggestions(); input.focus();
     }
   });
