@@ -2535,6 +2535,7 @@
   <a data-target="20" class="bias-link" style="color:#22d3ee;border-color:rgba(34,211,238,0.5);background:rgba(34,211,238,0.12);">🔑 16 Keys &amp; Quota</a>
   <a data-target="21" class="bias-link" style="color:#a78bfa;border-color:rgba(167,139,250,0.6);background:rgba(167,139,250,0.15);" onclick="window.renderStratLab&&window.renderStratLab()">🧪 17 Strategie-Lab</a>
   <a data-target="22" class="bias-link" style="color:#22c55e;border-color:rgba(34,197,94,0.5);background:rgba(34,197,94,0.12);">📅 18 Seasonality</a>
+  <a data-target="23" class="bias-link" style="color:#f472b6;border-color:rgba(244,114,182,0.5);background:rgba(244,114,182,0.12);">📐 19 Risiko</a>
   <a class="bias-link" style="cursor:pointer;color:#a78bfa;border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.12);" onclick="var c=document.getElementById('sec-cockpit');if(c)c.scrollIntoView({behavior:'smooth',block:'start'});var j=document.querySelector('.tc-tab[data-tc-tab=journal]');if(j)j.click();">📓 Trade-Journal</a>
 </nav>
 
@@ -8063,6 +8064,115 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     if(sd) sd.addEventListener('change',onDate); if(ed) ed.addEventListener('change',onDate);
     // Auto-Laden beim Start: Standard-Asset direkt mit echten Daten füllen
     selectAsset(sel.value);
+  });
+})();
+</script>
+
+
+<!-- ====== SECTION 19: CROSS-ASSET RISIKO & KORRELATION ====== -->
+<div class="section" id="sec-risk">
+  <div class="section-head">
+    <h2>19 · <em>Risiko &amp; Korrelation</em> <span style="font-size:11px;color:#f472b6;">📐 ECHTE KURSDATEN · ~1 JAHR</span></h2>
+    <div class="meta">Institutionelle Risiko-Kennzahlen aus echten Tageskursen: annualisierte Volatilität, Value-at-Risk, Korrelationsmatrix &amp; Portfolio-Diversifikation</div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+    <button id="riskLoad" style="background:linear-gradient(135deg,#f472b6,#22d3ee);color:#000;border:none;border-radius:6px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;">📐 Risiko berechnen</button>
+    <span id="riskStatus" style="font-size:11px;color:var(--text-2,#9ca3af);">Klick „Risiko berechnen" — lädt echte Tageskurse über den Worker.</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line,#1f2a44);border-radius:10px;padding:14px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px;">📊 Volatilität &amp; Value-at-Risk · pro Asset</div>
+      <div style="font-size:10px;color:var(--text-2,#9ca3af);margin-bottom:8px;">Annualisierte Vol + 1-Tages-VaR (95% / 99%, parametrisch). VaR = erwarteter max. Tagesverlust mit dieser Wahrscheinlichkeit.</div>
+      <div id="riskVolTable" style="max-height:340px;overflow-y:auto;">—</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line,#1f2a44);border-radius:10px;padding:14px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px;">🧮 Portfolio-Risiko (Gleichgewichtung)</div>
+      <div id="riskPortfolio" style="font-size:12px;color:var(--text-1,#cbd5e1);line-height:1.7;">—</div>
+      <div style="font-size:10px;color:var(--text-2,#9ca3af);margin-top:10px;line-height:1.5;">Diversifikations-Effekt = wieviel das Korb-Risiko unter der Summe der Einzelrisiken liegt (durch unkorrelierte/negativ korrelierte Assets). Hohe Diversifikation = robusteres Portfolio.</div>
+    </div>
+  </div>
+  <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line,#1f2a44);border-radius:10px;padding:14px;">
+    <div style="font-size:12px;font-weight:700;margin-bottom:8px;">🔗 Korrelationsmatrix (tägliche Renditen)</div>
+    <div style="font-size:10px;color:var(--text-2,#9ca3af);margin-bottom:10px;">🟥 positiv (laufen zusammen → Klumpenrisiko) · ⬜ unkorreliert · 🟩 negativ (gegenläufig → Absicherung/Diversifikation). Für Trades: nicht mehrere stark positiv korrelierte Long-Positionen gleichzeitig = versteckter Hebel.</div>
+    <div id="riskCorrMatrix" style="overflow-x:auto;">—</div>
+  </div>
+</div>
+<script>
+(function(){
+  const WORKER='https://kayser-data.mehmedkayser.workers.dev/';
+  const ASSETS={'EUR/USD':'EURUSD=X','GBP/USD':'GBPUSD=X','USD/JPY':'USDJPY=X','USD/CAD':'USDCAD=X','DXY':'DX-Y.NYB','Gold':'GC=F','Silber':'SI=F','WTI':'CL=F','Kupfer':'HG=F','NAS100':'^NDX','S&P500':'^GSPC','DAX':'^GDAXI','Bitcoin':'BTC-USD'};
+  const NAMES=Object.keys(ASSETS);
+  function status(t,c){ const e=document.getElementById('riskStatus'); if(e){e.textContent=t; e.style.color=c||'var(--text-2,#9ca3af)';} }
+  function mean(a){ return a.length? a.reduce((x,y)=>x+y,0)/a.length : 0; }
+  function parseMap(j){
+    try{
+      const r=j.chart.result[0], ts=r.timestamp, q=r.indicators.quote[0];
+      const adj=(r.indicators.adjclose&&r.indicators.adjclose[0])?r.indicators.adjclose[0].adjclose:null;
+      const m=new Map();
+      for(let i=0;i<ts.length;i++){ const c=(adj&&adj[i]!=null)?adj[i]:(q.close?q.close[i]:null); if(c==null||!isFinite(c))continue; m.set(new Date(ts[i]*1000).toISOString().slice(0,10), c); }
+      return m;
+    }catch(e){ return null; }
+  }
+  async function loadOne(sym){
+    const p2=Math.floor(Date.now()/1000), p1=Math.floor((Date.now()-400*86400000)/1000);
+    try{
+      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),22000);
+      const r=await fetch(WORKER+'?symbol='+encodeURIComponent(sym)+'&interval=1d&period1='+p1+'&period2='+p2+'&cb='+Date.now(),{cache:'no-store',signal:ctrl.signal});
+      clearTimeout(to);
+      if(r.ok){ const j=await r.json(); if(j&&j.chart&&j.chart.result) return parseMap(j); }
+    }catch(e){}
+    return null;
+  }
+  function color2(v,lo,hi){ const t=Math.max(0,Math.min(1,(v-lo)/(hi-lo))); const r=Math.round(34+t*(239-34)),g=Math.round(197-t*(197-68)),b=Math.round(94-t*(94-68)); return `rgba(${r},${g},${b},0.18)`; }
+  function corrColor(c){ if(c>=0){ const a=Math.min(0.55,c*0.6); return `rgba(239,68,68,${a})`; } const a=Math.min(0.55,-c*0.6); return `rgba(34,197,94,${a})`; }
+
+  let busy=false;
+  async function run(){
+    if(busy) return; busy=true;
+    status('Lade Tageskurse für '+NAMES.length+' Assets…','#22d3ee');
+    const maps={};
+    for(const n of NAMES){ maps[n]=await loadOne(ASSETS[n]); }
+    const ok=NAMES.filter(n=>maps[n]&&maps[n].size>50);
+    if(ok.length<3){ status('Konnte nicht genug Daten laden — später erneut.','#ef4444'); busy=false; return; }
+    // Gemeinsame Datumsachse
+    let dates=null; for(const n of ok){ const ds=[...maps[n].keys()]; dates = dates? dates.filter(d=>maps[n].has(d)) : ds; }
+    dates.sort();
+    if(dates.length<40){ status('Zu wenig überlappende Handelstage ('+dates.length+').','#ef4444'); busy=false; return; }
+    // Log-Renditen
+    const rets={}; for(const n of ok){ const a=[]; for(let i=1;i<dates.length;i++){ a.push(Math.log(maps[n].get(dates[i])/maps[n].get(dates[i-1]))); } rets[n]=a; }
+    const N=dates.length-1;
+    const sd={}; for(const n of ok){ const m=mean(rets[n]); sd[n]=Math.sqrt(rets[n].reduce((x,y)=>x+(y-m)**2,0)/(N-1)); }
+    // Vol/VaR-Tabelle
+    const rows=ok.map(n=>({n, annVol:sd[n]*Math.sqrt(252)*100, v95:1.645*sd[n]*100, v99:2.326*sd[n]*100})).sort((a,b)=>b.annVol-a.annVol);
+    let h='<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="color:var(--text-2,#9ca3af);text-align:right;font-size:9.5px;"><th style="text-align:left;padding:4px 6px;">Asset</th><th>ann. Vol</th><th>1T-VaR 95%</th><th>1T-VaR 99%</th></tr></thead><tbody>';
+    rows.forEach(r=>{ h+=`<tr style="border-top:1px solid rgba(255,255,255,0.05);"><td style="padding:4px 6px;font-weight:600;">${r.n}</td><td style="text-align:right;background:${color2(r.annVol,5,50)};">${r.annVol.toFixed(1)}%</td><td style="text-align:right;color:#fbbf24;">−${r.v95.toFixed(2)}%</td><td style="text-align:right;color:#ef4444;">−${r.v99.toFixed(2)}%</td></tr>`; });
+    document.getElementById('riskVolTable').innerHTML=h+'</tbody></table>';
+    // Korrelationsmatrix
+    function corr(a,b){ const ma=mean(a),mb=mean(b); let num=0,da=0,db=0; for(let i=0;i<a.length;i++){ num+=(a[i]-ma)*(b[i]-mb); da+=(a[i]-ma)**2; db+=(b[i]-mb)**2; } return num/Math.sqrt(da*db); }
+    const C={}; for(const x of ok){ C[x]={}; for(const y of ok){ C[x][y]=corr(rets[x],rets[y]); } }
+    let m='<table style="border-collapse:collapse;font-size:9.5px;"><thead><tr><th style="padding:3px 5px;"></th>';
+    ok.forEach(y=>{ m+=`<th style="padding:3px 4px;color:var(--text-2,#9ca3af);font-weight:600;writing-mode:vertical-rl;transform:rotate(180deg);height:46px;">${y}</th>`; });
+    m+='</tr></thead><tbody>';
+    ok.forEach(x=>{ m+=`<tr><td style="padding:3px 6px;color:var(--text-1,#cbd5e1);font-weight:600;white-space:nowrap;">${x}</td>`; ok.forEach(y=>{ const c=C[x][y]; m+=`<td style="padding:4px 5px;text-align:center;background:${x===y?'rgba(255,255,255,0.08)':corrColor(c)};color:${Math.abs(c)>0.4?'#fff':'var(--text-2,#9ca3af)'};font-variant-numeric:tabular-nums;">${c.toFixed(2)}</td>`; }); m+='</tr>'; });
+    document.getElementById('riskCorrMatrix').innerHTML=m+'</tbody></table>';
+    // Portfolio-VaR (Gleichgewichtung, parametrisch über Kovarianzmatrix)
+    const w=1/ok.length;
+    let portVar=0; for(const x of ok){ for(const y of ok){ portVar += w*w*C[x][y]*sd[x]*sd[y]; } }
+    const portSd=Math.sqrt(portVar);
+    const portV95=1.645*portSd*100, portV99=2.326*portSd*100, portAnnVol=portSd*Math.sqrt(252)*100;
+    const sumV95=ok.reduce((s,n)=>s+1.645*sd[n]*100*w,0); // undiversifiziert (gewichteter Mittelwert der Einzel-VaR)
+    const divBenefit=sumV95>0? (1-portV95/sumV95)*100 : 0;
+    document.getElementById('riskPortfolio').innerHTML =
+      `<div>Gleichgewichteter Korb aus <b>${ok.length}</b> Assets:</div>
+       <div style="margin-top:6px;">Annualisierte Vol: <b style="color:#fbbf24;">${portAnnVol.toFixed(1)}%</b></div>
+       <div>1-Tages-VaR 95%: <b style="color:#fbbf24;">−${portV95.toFixed(2)}%</b> · 99%: <b style="color:#ef4444;">−${portV99.toFixed(2)}%</b></div>
+       <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);">Diversifikations-Effekt: <b style="color:#22c55e;">${divBenefit.toFixed(0)}%</b></div>
+       <div style="font-size:10px;color:var(--text-2,#9ca3af);">Korb-VaR (−${portV95.toFixed(2)}%) liegt ${divBenefit.toFixed(0)}% unter dem Schnitt der Einzel-VaR (−${sumV95.toFixed(2)}%).</div>`;
+    status(`Berechnet aus ${N} gemeinsamen Handelstagen · ${ok.length}/${NAMES.length} Assets · ${dates[0]} bis ${dates[dates.length-1]}`,'#22c55e');
+    busy=false;
+  }
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const b=document.getElementById('riskLoad'); if(b) b.addEventListener('click', run);
   });
 })();
 </script>
