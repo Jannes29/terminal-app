@@ -15341,7 +15341,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   (function initTavily() {
     try {
       if (!localStorage.getItem(STATE_KEY)) {
-        localStorage.setItem(STATE_KEY, JSON.stringify({ idx: 0, burned: [], lastBurnTs: 0 }));
+        localStorage.setItem(STATE_KEY, JSON.stringify({ idx: 0, burned: [], lastBurnTs: 0, cycle: curMonth() }));
       }
       // Altlast aufräumen: pessimistischen v1-Zustand entfernen
       localStorage.removeItem('tavily_state_v1');
@@ -15350,8 +15350,14 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   function loadState() {
     try {
       const s = JSON.parse(localStorage.getItem(STATE_KEY)) || {};
-      return { idx: s.idx || 0, burned: s.burned || [], lastBurnTs: s.lastBurnTs || 0 };
-    } catch(e) { return { idx: 0, burned: [], lastBurnTs: 0 }; }
+      // Quota-Zyklus-Wechsel (15. des Monats) → verbrauchte Keys automatisch wieder freigeben
+      if (s.cycle !== curMonth()) {
+        const fresh = { idx: 0, burned: [], lastBurnTs: 0, cycle: curMonth() };
+        try { localStorage.setItem(STATE_KEY, JSON.stringify(fresh)); } catch(e) {}
+        return fresh;
+      }
+      return { idx: s.idx || 0, burned: s.burned || [], lastBurnTs: s.lastBurnTs || 0, cycle: s.cycle };
+    } catch(e) { return { idx: 0, burned: [], lastBurnTs: 0, cycle: curMonth() }; }
   }
   function saveState(st) {
     try { localStorage.setItem(STATE_KEY, JSON.stringify(st)); } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
@@ -15377,7 +15383,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     if (st.burned.length === TAVILY_KEYS.length) st.lastBurnTs = Date.now();
     saveState(st);
   }
-  function resetBurned() { saveState({ idx: 0, burned: [], lastBurnTs: 0 }); }
+  function resetBurned() { saveState({ idx: 0, burned: [], lastBurnTs: 0, cycle: curMonth() }); }
   // --- Verbrauchszähler pro Key (monatlich, localStorage) ---
   const USAGE_KEY = 'tavily_usage_v1';
   const MONTHLY_CAP = (() => { try { return parseInt(localStorage.getItem('tavily_monthly_cap'), 10) || 1000; } catch(e) { return 1000; } })();
@@ -15400,10 +15406,15 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     try { localStorage.setItem(USAGE_KEY, JSON.stringify(u)); } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
   }
   async function fetchSearch(query, opts = {}) {
-    const st = loadState();
-    // Gate: all keys burned & rechecked recently → skip fetch entirely (no error log)
-    if (st.burned.length === TAVILY_KEYS.length && st.lastBurnTs && (Date.now() - st.lastBurnTs) < BURN_RECHECK_MS) {
-      return null;
+    let st = loadState();
+    // Alle Keys verbraucht? Recheck-Fenster (6h) vorbei → alle wieder freigeben und erneut probieren
+    // (Quota evtl. erholt / neuer Zyklus). Sonst noch im Sperrfenster → kein Fetch, keine Fehler.
+    if (st.burned.length === TAVILY_KEYS.length) {
+      if (!st.lastBurnTs || (Date.now() - st.lastBurnTs) >= BURN_RECHECK_MS) {
+        resetBurned(); st = loadState();
+      } else {
+        return null;
+      }
     }
     const maxRetries = TAVILY_KEYS.length;
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -15435,6 +15446,10 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
         }
         if (!r.ok) return null;
         bumpUsage(c.idx);
+        // Round-Robin: nach erfolgreichem Call zum nächsten Key wechseln → gleichmäßige Last, „wechselt immer"
+        const stOk = loadState();
+        stOk.idx = (c.idx + 1) % TAVILY_KEYS.length;
+        saveState(stOk);
         return await r.json();
       } catch(e) { return null; }
     }
