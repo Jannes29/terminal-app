@@ -2536,6 +2536,7 @@
   <a data-target="21" class="bias-link" style="color:#a78bfa;border-color:rgba(167,139,250,0.6);background:rgba(167,139,250,0.15);" onclick="window.renderStratLab&&window.renderStratLab()">🧪 17 Strategie-Lab</a>
   <a data-target="22" class="bias-link" style="color:#22c55e;border-color:rgba(34,197,94,0.5);background:rgba(34,197,94,0.12);">📅 18 Seasonality</a>
   <a data-target="23" class="bias-link" style="color:#f472b6;border-color:rgba(244,114,182,0.5);background:rgba(244,114,182,0.12);">📐 19 Risiko</a>
+  <a data-target="24" class="bias-link" style="color:#fbbf24;border-color:rgba(251,191,36,0.6);background:linear-gradient(135deg,rgba(251,191,36,0.18),rgba(34,197,94,0.12));font-weight:800;">🎯 20 Setup-Scanner</a>
   <a class="bias-link" style="cursor:pointer;color:#a78bfa;border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.12);" onclick="var c=document.getElementById('sec-cockpit');if(c)c.scrollIntoView({behavior:'smooth',block:'start'});var j=document.querySelector('.tc-tab[data-tc-tab=journal]');if(j)j.click();">📓 Trade-Journal</a>
 </nav>
 
@@ -8173,6 +8174,79 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   }
   document.addEventListener('DOMContentLoaded', ()=>{
     const b=document.getElementById('riskLoad'); if(b) b.addEventListener('click', run);
+  });
+})();
+</script>
+
+
+<!-- ====== SECTION 20: SETUP-SCANNER (Konviktions-Radar) ====== -->
+<div class="section" id="sec-scanner">
+  <div class="section-head">
+    <h2>20 · <em>Setup-Scanner</em> <span style="font-size:11px;color:#fbbf24;">🎯 KONVIKTIONS-RADAR</span></h2>
+    <div class="meta">Alle Assets auf einen Blick, sortiert nach handelbarer Konviktion (Bias × Konfidenz × Datenabdeckung). Für deine Sonntags-Analyse: oben die saubersten Setups, unten was du meiden solltest.</div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+    <button id="scanRun" style="background:linear-gradient(135deg,#fbbf24,#22c55e);color:#000;border:none;border-radius:6px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;">🎯 Scannen</button>
+    <span id="scanStatus" style="font-size:11px;color:var(--text-2,#9ca3af);">Liest live aus der Bias-Engine — aktualisiert sich automatisch.</span>
+  </div>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:10.5px;color:var(--text-2,#9ca3af);">
+    <span><b style="color:#22c55e;">★ HANDELN</b> = starker Bias + belegte Konfidenz + volle Daten</span>
+    <span><b style="color:#fbbf24;">BEOBACHTEN</b> = Signal da, aber nicht alle Kriterien</span>
+    <span><b style="color:#6b7280;">MEIDEN</b> = zu schwach / unsicher / dünne Daten</span>
+  </div>
+  <div id="scanTable" style="overflow-x:auto;">—</div>
+</div>
+<script>
+(function(){
+  const NM={USD:'USD',EUR:'EUR',GBP:'GBP',JPY:'JPY',CHF:'CHF',AUD:'AUD',NZD:'NZD',CAD:'CAD',NAS100:'NAS100',SPX500:'S&P500',GER40:'DAX',FTSE:'FTSE 100',XAU:'Gold',XAG:'Silber',XCU:'Kupfer',WTI:'WTI Öl',NGAS:'Erdgas',ZW:'Weizen',ZC:'Mais',ZS:'Sojabohnen',KC:'Kaffee',SB:'Zucker',CC:'Kakao',CT:'Baumwolle',BTC:'Bitcoin',ETH:'Ethereum',SOL:'Solana',BRENT:'Brent',XPT:'Platin',XPD:'Palladium'};
+  const FX=['USD','EUR','GBP','JPY','CHF','AUD','NZD','CAD'];
+  function status(t,c){ const e=document.getElementById('scanStatus'); if(e){e.textContent=t; e.style.color=c||'var(--text-2,#9ca3af)';} }
+  function bias30(cs){ const amp=Math.sign(cs)*Math.pow(Math.abs(cs),0.55); return Math.max(22,Math.min(78,Math.round(50+amp*26))); }
+  function render(){
+    const cs=(window.MACRO&&window.MACRO.classScores)||{};
+    const conf=window.BIAS_CONFIDENCE||{};
+    const cov=window.BIAS_COVERAGE||{};
+    const contrib=window.BIAS_CONTRIBUTIONS||{};
+    const keys=Object.keys(cs).filter(a=>cs[a]!=null&&NM[a]);
+    if(!keys.length){ document.getElementById('scanTable').innerHTML='<div style="padding:20px;color:var(--text-2,#9ca3af);font-size:12px;">Engine lädt noch — gleich verfügbar. Klick „Scannen" oder kurz warten.</div>'; return; }
+    const rows=keys.map(a=>{
+      const score=cs[a];
+      const cv=cov[a]?cov[a].pctLive:0;
+      const cf=conf[a]!=null?conf[a]:0.5;
+      const conviction=Math.abs(score)*(cv/100)*(0.5+cf/2);
+      const drv=(contrib[a]||[]).slice(0,2).map(d=>d.name).join(', ');
+      let verdict, vc;
+      if(Math.abs(score)>=0.25 && cf>=0.5 && cv>=80){ verdict='★ HANDELN'; vc='#22c55e'; }
+      else if(Math.abs(score)>=0.20 && cv>=60){ verdict='BEOBACHTEN'; vc='#fbbf24'; }
+      else { verdict='MEIDEN'; vc='#6b7280'; }
+      return {a,score,cv,cf,conviction,drv,verdict,vc};
+    }).sort((x,y)=>y.conviction-x.conviction);
+    const isFX=a=>FX.includes(a);
+    let h='<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="color:var(--text-2,#9ca3af);text-align:left;font-size:9.5px;letter-spacing:0.5px;">'+
+      '<th style="padding:5px 6px;">ASSET</th><th>RICHTUNG</th><th style="text-align:right;">BIAS 30T</th><th style="text-align:right;">KONFIDENZ</th><th style="text-align:right;">DATEN</th><th>HAUPTTREIBER</th><th style="text-align:center;">VERDIKT</th></tr></thead><tbody>';
+    rows.forEach(r=>{
+      const long=r.score>0;
+      const dirTxt = isFX(r.a) ? (long?'LONG · stark':'SHORT · schwach') : (long?'LONG':'SHORT');
+      const dirCol = long?'#22c55e':'#ef4444';
+      const cfCol = r.cf>=0.6?'#22c55e':r.cf>=0.45?'#fbbf24':'#ef4444';
+      const cvCol = r.cv>=80?'#22c55e':r.cv>=60?'#fbbf24':'#6b7280';
+      h+=`<tr style="border-top:1px solid rgba(255,255,255,0.05);">
+        <td style="padding:5px 6px;font-weight:700;">${NM[r.a]}</td>
+        <td style="color:${dirCol};font-weight:600;">${dirTxt}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;color:${dirCol};">${bias30(r.score)}%</td>
+        <td style="text-align:right;color:${cfCol};">${r.cf.toFixed(2)}</td>
+        <td style="text-align:right;color:${cvCol};">${r.cv}%</td>
+        <td style="color:var(--text-2,#9ca3af);font-size:10px;">${r.drv||'—'}</td>
+        <td style="text-align:center;"><span style="color:${r.vc};font-weight:700;font-size:10px;">${r.verdict}</span></td></tr>`;
+    });
+    document.getElementById('scanTable').innerHTML=h+'</tbody></table>';
+    const tradeable=rows.filter(r=>r.verdict.includes('HANDELN')).length;
+    status(`${rows.length} Assets gescannt · ${tradeable} mit Verdikt HANDELN · Stand ${new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`,'#22c55e');
+  }
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const b=document.getElementById('scanRun'); if(b) b.addEventListener('click', render);
+    window.addEventListener('macroUpdate', ()=>{ if(document.getElementById('scanTable')) render(); });
+    setTimeout(render, 5000);
   });
 })();
 </script>
@@ -16862,7 +16936,9 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     }
     // Aliases
     s.BRENT = s.WTI;
-    s.XPT = 0; s.XPD = 0;
+    // Platin/Palladium: kein eigener Treibersatz → sinnvoller Proxy aus Industrie-Nachfrage (Kupfer) + Edelmetall-Beta (Gold)
+    s.XPT = Math.max(-1, Math.min(1, (s.XCU!=null?s.XCU:0)*0.6 + (s.XAU!=null?s.XAU:0)*0.2));
+    s.XPD = s.XPT;
     window.BIAS_CONTRIBUTIONS = contributions;
     window.BIAS_COVERAGE = coverage;
     return s;
