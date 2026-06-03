@@ -8187,13 +8187,16 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   </div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
     <button id="scanRun" style="background:linear-gradient(135deg,#fbbf24,#22c55e);color:#000;border:none;border-radius:6px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;">🎯 Scannen</button>
+    <button id="scanSea" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.4);border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;">📅 Saisonal abgleichen</button>
     <span id="scanStatus" style="font-size:11px;color:var(--text-2,#9ca3af);">Liest live aus der Bias-Engine — aktualisiert sich automatisch.</span>
   </div>
   <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:10.5px;color:var(--text-2,#9ca3af);">
+    <span><b style="color:#22d3ee;">★★ TOP</b> = HANDELN + saisonal bestätigt</span>
     <span><b style="color:#22c55e;">★ HANDELN</b> = starker Bias + belegte Konfidenz + volle Daten</span>
     <span><b style="color:#fbbf24;">BEOBACHTEN</b> = Signal da, aber nicht alle Kriterien</span>
     <span><b style="color:#6b7280;">MEIDEN</b> = zu schwach / unsicher / dünne Daten</span>
   </div>
+  <div style="font-size:10px;color:var(--text-2,#9ca3af);margin-bottom:10px;">📅 <b>Saisonal 30T</b>: ✓ = die historische Vorwärts-30-Tage-Saisonalität (15J) bestätigt die Bias-Richtung · ✗ = sie widerspricht. Klick „Saisonal abgleichen" zum Laden (einmal pro Tag, dann gecacht).</div>
   <div id="scanTable" style="overflow-x:auto;">—</div>
 </div>
 <script>
@@ -8202,6 +8205,22 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   const FX=['USD','EUR','GBP','JPY','CHF','AUD','NZD','CAD'];
   function status(t,c){ const e=document.getElementById('scanStatus'); if(e){e.textContent=t; e.style.color=c||'var(--text-2,#9ca3af)';} }
   function bias30(cs){ const amp=Math.sign(cs)*Math.pow(Math.abs(cs),0.55); return Math.max(22,Math.min(78,Math.round(50+amp*26))); }
+  // ── Seasonality-Abgleich: Vorwärts-30-Tage-Richtung aus echter Historie (Worker), gecacht pro Tag ──
+  const SYM={USD:'DX-Y.NYB',EUR:'EURUSD=X',GBP:'GBPUSD=X',JPY:'USDJPY=X',CHF:'USDCHF=X',AUD:'AUDUSD=X',NZD:'NZDUSD=X',CAD:'USDCAD=X',NAS100:'^NDX',SPX500:'^GSPC',GER40:'^GDAXI',FTSE:'^FTSE',XAU:'GC=F',XAG:'SI=F',XCU:'HG=F',WTI:'CL=F',NGAS:'NG=F',ZW:'ZW=F',ZC:'ZC=F',ZS:'ZS=F',KC:'KC=F',SB:'SB=F',CC:'CC=F',CT:'CT=F',BTC:'BTC-USD',ETH:'ETH-USD',SOL:'SOL-USD',BRENT:'BZ=F',XPT:'PL=F',XPD:'PA=F'};
+  const SEA_INVERT={JPY:1,CHF:1,CAD:1}; // USD/XXX-Paare → Richtung invertieren für Währungsstärke
+  const SEA_WORKER='https://kayser-data.mehmedkayser.workers.dev/';
+  let SEA=(function(){ try{ const c=JSON.parse(localStorage.getItem('scan_sea_v1')||'null'); if(c&&c.date===new Date().toISOString().slice(0,10)) return c.data; }catch(e){} return null; })();
+  function seaParse(j){ try{ const r=j.chart.result[0],ts=r.timestamp,q=r.indicators.quote[0]; const adj=(r.indicators.adjclose&&r.indicators.adjclose[0])?r.indicators.adjclose[0].adjclose:null; const o=[]; for(let i=0;i<ts.length;i++){ const c=(adj&&adj[i]!=null)?adj[i]:(q.close?q.close[i]:null); if(c==null||!isFinite(c))continue; o.push({d:new Date(ts[i]*1000),c}); } return o; }catch(e){ return null; } }
+  async function seaFetch(sym){ const p2=Math.floor(Date.now()/1000),p1=Math.floor((Date.now()-30*365*86400000)/1000); try{ const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),20000); const r=await fetch(SEA_WORKER+'?symbol='+encodeURIComponent(sym)+'&interval=1d&period1='+p1+'&period2='+p2+'&cb='+Date.now(),{cache:'no-store',signal:ctrl.signal}); clearTimeout(to); if(r.ok){ const j=await r.json(); if(j&&j.chart&&j.chart.result) return seaParse(j); } }catch(e){} return null; }
+  function seaDir(s,invert){ if(!s||s.length<300) return null; const now=new Date(),m=now.getMonth(),day=now.getDate(),yN=now.getFullYear(); const rets=[]; for(let y=yN-15;y<=yN-1;y++){ const sT=new Date(y,m,day),eT=new Date(y,m,day); eT.setDate(eT.getDate()+30); let si=s.findIndex(p=>p.d>=sT),ei=-1; for(let i=0;i<s.length;i++){ if(s[i].d<=eT)ei=i; else break; } if(si<0||ei<0||ei<=si)continue; rets.push((s[ei].c-s[si].c)/s[si].c*100); } if(!rets.length) return null; const avg=rets.reduce((x,y)=>x+y,0)/rets.length; const wr=Math.round(rets.filter(x=>x>0).length/rets.length*100); const dd=invert?-avg:avg; return { dir: dd>0?1:-1, avgPct:+dd.toFixed(2), wr }; }
+  let seaBusy=false;
+  async function checkSeasonal(){
+    if(seaBusy) return; seaBusy=true;
+    const assets=Object.keys(SYM), data={}; let i=0;
+    for(const a of assets){ i++; status('Saisonaler Abgleich… '+i+'/'+assets.length+' ('+(NM[a]||a)+')','#22d3ee'); const s=await seaFetch(SYM[a]); const r=seaDir(s,!!SEA_INVERT[a]); if(r) data[a]=r; }
+    SEA=data; try{ localStorage.setItem('scan_sea_v1', JSON.stringify({date:new Date().toISOString().slice(0,10),data})); }catch(e){}
+    seaBusy=false; render();
+  }
   function render(){
     const cs=(window.MACRO&&window.MACRO.classScores)||{};
     const conf=window.BIAS_CONFIDENCE||{};
@@ -8213,17 +8232,20 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       const score=cs[a];
       const cv=cov[a]?cov[a].pctLive:0;
       const cf=conf[a]!=null?conf[a]:0.5;
-      const conviction=Math.abs(score)*(cv/100)*(0.5+cf/2);
+      let conviction=Math.abs(score)*(cv/100)*(0.5+cf/2);
       const drv=(contrib[a]||[]).slice(0,2).map(d=>d.name).join(', ');
       let verdict, vc;
       if(Math.abs(score)>=0.25 && cf>=0.5 && cv>=80){ verdict='★ HANDELN'; vc='#22c55e'; }
       else if(Math.abs(score)>=0.20 && cv>=60){ verdict='BEOBACHTEN'; vc='#fbbf24'; }
       else { verdict='MEIDEN'; vc='#6b7280'; }
-      return {a,score,cv,cf,conviction,drv,verdict,vc};
+      // Saisonaler Abgleich: stimmt die saisonale Vorwärts-Richtung mit der Bias-Richtung überein?
+      const long=score>0; const se=SEA&&SEA[a]; let seaCell='–', seaCol='#6b7280', seaMatch=null;
+      if(se){ seaMatch=(se.dir>0)===long; seaCell=(seaMatch?'✓ ':'✗ ')+(se.avgPct>=0?'+':'')+se.avgPct+'% ('+se.wr+'%)'; seaCol=seaMatch?'#22c55e':'#ef4444'; conviction*=seaMatch?1.3:0.85; if(verdict.indexOf('HANDELN')>=0 && seaMatch){ verdict='★★ TOP'; vc='#22d3ee'; } }
+      return {a,score,cv,cf,conviction,drv,verdict,vc,seaCell,seaCol};
     }).sort((x,y)=>y.conviction-x.conviction);
     const isFX=a=>FX.includes(a);
     let h='<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="color:var(--text-2,#9ca3af);text-align:left;font-size:9.5px;letter-spacing:0.5px;">'+
-      '<th style="padding:5px 6px;">ASSET</th><th>RICHTUNG</th><th style="text-align:right;">BIAS 30T</th><th style="text-align:right;">KONFIDENZ</th><th style="text-align:right;">DATEN</th><th>HAUPTTREIBER</th><th style="text-align:center;">VERDIKT</th></tr></thead><tbody>';
+      '<th style="padding:5px 6px;">ASSET</th><th>RICHTUNG</th><th style="text-align:right;">BIAS 30T</th><th style="text-align:right;">KONFIDENZ</th><th style="text-align:right;">DATEN</th><th>HAUPTTREIBER</th><th style="text-align:right;">SAISONAL 30T</th><th style="text-align:center;">VERDIKT</th></tr></thead><tbody>';
     rows.forEach(r=>{
       const long=r.score>0;
       const dirTxt = isFX(r.a) ? (long?'LONG · stark':'SHORT · schwach') : (long?'LONG':'SHORT');
@@ -8237,6 +8259,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
         <td style="text-align:right;color:${cfCol};">${r.cf.toFixed(2)}</td>
         <td style="text-align:right;color:${cvCol};">${r.cv}%</td>
         <td style="color:var(--text-2,#9ca3af);font-size:10px;">${r.drv||'—'}</td>
+        <td style="text-align:right;color:${r.seaCol};font-size:10px;">${r.seaCell}</td>
         <td style="text-align:center;"><span style="color:${r.vc};font-weight:700;font-size:10px;">${r.verdict}</span></td></tr>`;
     });
     document.getElementById('scanTable').innerHTML=h+'</tbody></table>';
@@ -8245,6 +8268,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   }
   document.addEventListener('DOMContentLoaded', ()=>{
     const b=document.getElementById('scanRun'); if(b) b.addEventListener('click', render);
+    const sb=document.getElementById('scanSea'); if(sb) sb.addEventListener('click', checkSeasonal);
     window.addEventListener('macroUpdate', ()=>{ if(document.getElementById('scanTable')) render(); });
     setTimeout(render, 5000);
   });
