@@ -2862,24 +2862,41 @@
           }
           return null;
         }
-        async function refresh() {
-          const results = await Promise.all(CBS.map(async cb => {
-            try { return {cb, data: await fetchRate(cb.series)}; }
-            catch(e) { return {cb, data: null, err: e}; }
-          }));
+        const CB_LS = 'cb_rates_cache_v1';
+        function loadCbCache(){ try { return JSON.parse(localStorage.getItem(CB_LS) || '{}'); } catch(e){ return {}; } }
+        function saveCbCache(o){ try { localStorage.setItem(CB_LS, JSON.stringify(o)); } catch(e){} }
+        function renderCB(results){
+          const cache = loadCbCache();
+          window.CB_RATES = {};
           const html = results.map(r => {
-            if (!r.data) return `<tr><td class="sym">${r.cb.name}</td><td colspan="2" style="color:var(--muted);font-size:10px;">— fetch error —</td></tr>`;
-            const dt = new Date(r.data.date).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
-            return `<tr title="${r.cb.desc}"><td class="sym">${r.cb.name}</td><td>${r.data.rate.toFixed(2)}%</td><td style="font-size:10px;color:var(--text-2);">${dt}</td></tr>`;
+            let d = r.data || cache[r.cb.name] || null;   // bei Fehler: letzter bekannter Wert aus Cache
+            if (!d) return `<tr><td class="sym">${r.cb.name}</td><td colspan="2" style="color:var(--muted);font-size:10px;">lädt…</td></tr>`;
+            window.CB_RATES[r.cb.name] = d.rate;
+            const dt = new Date(d.date).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
+            const dim = !r.data ? ' style="opacity:.55"' : '';   // gecachter (nicht frisch geladener) Wert leicht gedimmt
+            return `<tr title="${r.cb.desc}"${dim}><td class="sym">${r.cb.name}</td><td>${d.rate.toFixed(2)}%</td><td style="font-size:10px;color:var(--text-2);">${dt}</td></tr>`;
           }).join('');
           document.getElementById('cbBody').innerHTML = html;
-          // Live-Zinsen global verfügbar machen (für AI-Prompt & Co.)
-          window.CB_RATES = {};
-          results.forEach(r => { if (r.data) window.CB_RATES[r.cb.name] = r.data.rate; });
           const dates = results.filter(r=>r.data).map(r=>r.data.date).sort();
           if (dates.length) {
             const latest = new Date(dates[dates.length-1]);
             document.getElementById('cbStand').textContent = 'FRED · Latest ' + latest.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
+          }
+        }
+        async function loadOne(cb){ try { return {cb, data: await fetchRate(cb.series)}; } catch(e){ return {cb, data: null}; } }
+        async function refresh() {
+          let results = await Promise.all(CBS.map(loadOne));
+          const cache = loadCbCache();
+          results.forEach(r => { if (r.data) cache[r.cb.name] = r.data; });
+          saveCbCache(cache); renderCB(results);
+          // Fehlgeschlagene Serien bis zu 4× wiederholen (transiente Proxy-/FRED-Drosselung selbstheilend)
+          for (let attempt = 0; attempt < 4; attempt++) {
+            const failed = results.filter(r => !r.data);
+            if (!failed.length) break;
+            await new Promise(res => setTimeout(res, 5000 * (attempt + 1)));
+            const retried = await Promise.all(failed.map(f => loadOne(f.cb)));
+            retried.forEach(rr => { if (rr.data) { const i = results.findIndex(x => x.cb.name === rr.cb.name); results[i] = rr; cache[rr.cb.name] = rr.data; } });
+            saveCbCache(cache); renderCB(results);
           }
         }
         refresh();
@@ -24753,28 +24770,61 @@ window.SMC_ENGINE = { ready: true, ...window.SMC };
     try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
   };
 
-  // 1) TREASURY.GOV DAILY YIELD CURVE — official, no key, CORS-OK
-  async function fetchTreasury() {
+  // 1) TREASURY YIELD CURVE — offizielle home.treasury.gov Daily Par Yield Curve (CSV via Proxy),
+  //    Fallback: aus dem FRED-Cache (DGS-Serien, jetzt zuverlässig via cosd) zusammenbauen.
+  //    (Der alte fiscaldata-Endpoint lieferte 404 → daher die "Treasury:missing"-Warnung.)
+  async function fetchTreasury(attempt) {
+    attempt = attempt || 0;
     const cached = cacheGet('treasury_curve_v1', 6*3600*1000);
     if (cached) { window.TREASURY_CURVE = cached; window.dispatchEvent(new CustomEvent('treasuryUpdate')); return; }
-    const url = 'https://api.fiscaldata.treasury.gov/services/api/v1/accounting/od/daily_treasury_yield_curve_rates?sort=-record_date&page[size]=2&fields=record_date,bc_1month,bc_2month,bc_3month,bc_6month,bc_1year,bc_2year,bc_3year,bc_5year,bc_7year,bc_10year,bc_20year,bc_30year';
-    const j = await tryFetch(url);
-    if (!j?.data?.length) return;
-    const latest = j.data[0];
-    const data = {
-      date: latest.record_date,
-      y1m: +latest.bc_1month, y3m: +latest.bc_3month, y6m: +latest.bc_6month,
-      y1y: +latest.bc_1year, y2y: +latest.bc_2year, y3y: +latest.bc_3year,
-      y5y: +latest.bc_5year, y7y: +latest.bc_7year, y10y: +latest.bc_10year,
-      y20y: +latest.bc_20year, y30y: +latest.bc_30year,
-      spread_2s10s: +latest.bc_10year - +latest.bc_2year,
-      spread_3m10y: +latest.bc_10year - +latest.bc_3month,
-      spread_2s30s: +latest.bc_30year - +latest.bc_2year
-    };
+    let data = null;
+    // a) Offizielle volle Kurve (1M–30Y) via CORS-Proxy
+    try {
+      const yr = new Date().getFullYear();
+      const csvUrl = `https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/${yr}/all?type=daily_treasury_yield_curve&field_tdr_date_value=${yr}&_format=csv`;
+      const proxiesTxt = [
+        u => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`,
+        u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`
+      ];
+      for (const p of proxiesTxt) {
+        try {
+          const ctl = new AbortController(); const id = setTimeout(()=>ctl.abort(), 10000);
+          const r = await fetch(p(csvUrl), { signal: ctl.signal }); clearTimeout(id);
+          if (!r.ok) continue;
+          const t = await r.text();
+          if (t && /Date/.test(t) && t.indexOf(',') >= 0 && t.trim()[0] !== '<' && t.trim()[0] !== '{') {
+            const lines = t.trim().split(/\r?\n/);
+            const hdr = lines[0].split(',').map(s => s.replace(/"/g,'').trim());
+            const row = lines[1] ? lines[1].split(',') : null;
+            if (row) {
+              const col = nm => { const i = hdr.indexOf(nm); return i>=0 ? parseFloat(row[i]) : NaN; };
+              const y2=col('2 Yr'), y10=col('10 Yr'), y3m=col('3 Mo'), y30=col('30 Yr');
+              if (isFinite(y2) && isFinite(y10)) {
+                data = { date:row[0], y1m:col('1 Mo'), y3m:y3m, y6m:col('6 Mo'), y1y:col('1 Yr'),
+                         y2y:y2, y3y:col('3 Yr'), y5y:col('5 Yr'), y7y:col('7 Yr'), y10y:y10,
+                         y20y:col('20 Yr'), y30y:y30,
+                         spread_2s10s:y10-y2, spread_3m10y:(isFinite(y3m)?y10-y3m:null), spread_2s30s:(isFinite(y30)?y30-y2:null) };
+                break;
+              }
+            }
+          }
+        } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
+      }
+    } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
+    // b) Fallback: aus FRED-Cache (3M/2Y/10Y reichen für die genutzten Spreads)
+    if (!data) {
+      const gf = window.getFred || (() => null);
+      const y10 = gf('DGS10'), y2 = gf('DGS2'), y3m = gf('DGS3MO');
+      if (y10 != null && y2 != null) {
+        data = { date:new Date().toISOString().slice(0,10), y3m:(y3m!=null?y3m:null), y2y:y2, y10y:y10,
+                 spread_2s10s:y10-y2, spread_3m10y:(y3m!=null?y10-y3m:null), _src:'FRED' };
+      }
+    }
+    if (!data) { if (attempt < 8) setTimeout(() => fetchTreasury(attempt+1), 45000); return; } // FRED lädt noch → später erneut
     window.TREASURY_CURVE = data;
     cacheSet('treasury_curve_v1', data);
     window.dispatchEvent(new CustomEvent('treasuryUpdate'));
-    console.log('[TREASURY]', data.date, '10Y=' + data.y10y + '% · 2s10s=' + data.spread_2s10s.toFixed(2) + 'bps');
+    if (window.DEBUG) console.log('[TREASURY]', data.date, '10Y=' + data.y10y + '%');
   }
 
   // 2) alternative.me Fear & Greed Index
@@ -25247,7 +25297,13 @@ window.SMC_ENGINE = { ready: true, ...window.SMC };
         const raw = localStorage.getItem(s.key);
         if (!raw) { out[s.label] = { status:'missing', age: Infinity }; continue; }
         const obj = JSON.parse(raw);
-        const ts = obj.ts || 0;
+        let ts = obj.ts || 0;
+        // Manche Caches (z.B. FRED macro_fund_cache_v1) sind {key:{ts,res}} ohne Top-Level-ts
+        // → jüngsten Eintrags-Timestamp verwenden, sonst falscher "stale"-Alarm.
+        if (!ts && obj && typeof obj === 'object') {
+          const tss = Object.values(obj).map(v => v && v.ts).filter(t => typeof t === 'number');
+          if (tss.length) ts = Math.max(...tss);
+        }
         const age = now - ts;
         const stale = age > s.maxAgeMs;
         out[s.label] = {
