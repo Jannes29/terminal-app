@@ -10807,40 +10807,51 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   }
 
   // ===== FRED CSV fetcher — eigener Worker zuerst (serverseitig, schnell), dann Proxy-Fallback =====
+  // Große Tagesserien (volle Historie seit den 60ern/80ern = riesige Datei → Timeout).
+  // Für diese den Zeitraum begrenzen und über Proxy laden; der Rest (monatlich/klein) geht
+  // über den eigenen Worker (zuverlässig, keine IP-Drosselung).
+  const FRED_BIG_DAILY = new Set(['BAMLC0A0CM','BAMLH0A0HYM2','BAMLH0A0HYM2EY','DCOILBRENTEU','DCOILWTICO','DEXBZUS','DEXCAUS','DEXCHUS','DEXINUS','DEXJPUS','DEXSZUS','DEXUSAL','DEXUSEU','DEXUSUK','DEXVZUS','DFF','DGS10','DGS2','DGS3MO','DHHNGSP','DTWEXBGS','T10Y2Y','T10Y3M','T10YIE','T5YIE','VIXCLS']);
   async function fredFetch(seriesId) {
-    // WICHTIG: Zeitraum auf die letzten ~3 Jahre begrenzen (cosd). Die volle Historie mancher
-    // Tagesserien (z.B. DGS10 seit 1962) ist riesig → Timeouts. 3 Jahre reichen für YoY + z-Scores
-    // locker und laden in ~0,2s statt in den Timeout zu laufen.
+    // Zeitraum auf die letzten ~3 Jahre begrenzen (cosd) → kleine Datei, lädt in ~0,2s statt Timeout.
+    // 3 Jahre reichen für YoY + rollende z-Scores locker.
     const cosd = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 3); return d.toISOString().slice(0,10); })();
     const direct = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}&cosd=${cosd}`;
-    // 1) Öffentliche CORS-Proxies mit begrenztem Zeitraum (kleine Datei, schnell & zuverlässig)
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const r = await PROXY_FETCH(direct, 9000);
-      if (r) {
-        try {
-          const txt = await r.text();
-          if (txt && txt.includes(',') && txt.length > 30) {
+    async function viaProxy() {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const r = await PROXY_FETCH(direct, 9000);
+        if (r) {
+          try {
+            const txt = await r.text();
+            if (txt && txt.includes(',') && txt.length > 30) {
+              const rows = parseCsv(txt);
+              if (rows.length > 0) return rows;
+            }
+          } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
+        }
+        if (attempt === 0) await new Promise(r => setTimeout(r, 300));
+      }
+      return null;
+    }
+    async function viaWorker() {
+      try {
+        const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
+        const wr = await fetch('https://kayser-data.mehmedkayser.workers.dev/?fred=' + encodeURIComponent(seriesId), { cache:'no-store', signal: ctrl.signal });
+        clearTimeout(to);
+        if (wr && wr.ok) {
+          const txt = await wr.text();
+          if (txt && txt.includes(',') && txt.length > 50) {
             const rows = parseCsv(txt);
             if (rows.length > 0) return rows;
           }
-        } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
-      }
-      if (attempt === 0) await new Promise(r => setTimeout(r, 300));
-    }
-    // 2) Fallback: eigener Cloudflare-Worker (volle Historie, serverseitig)
-    try {
-      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
-      const wr = await fetch('https://kayser-data.mehmedkayser.workers.dev/?fred=' + encodeURIComponent(seriesId), { cache:'no-store', signal: ctrl.signal });
-      clearTimeout(to);
-      if (wr && wr.ok) {
-        const txt = await wr.text();
-        if (txt && txt.includes(',') && txt.length > 50) {
-          const rows = parseCsv(txt);
-          if (rows.length > 0) return rows;
         }
-      }
-    } catch(e) { /* keine Daten */ }
-    return null;
+      } catch(e) { /* keine Daten */ }
+      return null;
+    }
+    // Große Tagesserien: Proxy+cosd zuerst (kleine Datei). Alle übrigen: Worker zuerst (zuverlässig).
+    if (FRED_BIG_DAILY.has(seriesId)) {
+      return (await viaProxy()) || (await viaWorker());
+    }
+    return (await viaWorker()) || (await viaProxy());
   }
   function parseCsv(txt) {
     const rows = txt.trim().split('\n').slice(1).map(l => {
