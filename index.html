@@ -10808,9 +10808,28 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
 
   // ===== FRED CSV fetcher — eigener Worker zuerst (serverseitig, schnell), dann Proxy-Fallback =====
   async function fredFetch(seriesId) {
-    // 1) Eigener Cloudflare-Worker: holt fredgraph.csv serverseitig (kein langsamer CORS-Proxy)
+    // WICHTIG: Zeitraum auf die letzten ~3 Jahre begrenzen (cosd). Die volle Historie mancher
+    // Tagesserien (z.B. DGS10 seit 1962) ist riesig → Timeouts. 3 Jahre reichen für YoY + z-Scores
+    // locker und laden in ~0,2s statt in den Timeout zu laufen.
+    const cosd = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 3); return d.toISOString().slice(0,10); })();
+    const direct = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}&cosd=${cosd}`;
+    // 1) Öffentliche CORS-Proxies mit begrenztem Zeitraum (kleine Datei, schnell & zuverlässig)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const r = await PROXY_FETCH(direct, 9000);
+      if (r) {
+        try {
+          const txt = await r.text();
+          if (txt && txt.includes(',') && txt.length > 30) {
+            const rows = parseCsv(txt);
+            if (rows.length > 0) return rows;
+          }
+        } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
+      }
+      if (attempt === 0) await new Promise(r => setTimeout(r, 300));
+    }
+    // 2) Fallback: eigener Cloudflare-Worker (volle Historie, serverseitig)
     try {
-      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 12000);
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
       const wr = await fetch('https://kayser-data.mehmedkayser.workers.dev/?fred=' + encodeURIComponent(seriesId), { cache:'no-store', signal: ctrl.signal });
       clearTimeout(to);
       if (wr && wr.ok) {
@@ -10820,22 +10839,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
           if (rows.length > 0) return rows;
         }
       }
-    } catch(e) { /* Fallback auf Proxies */ }
-    // 2) Fallback: öffentliche CORS-Proxies
-    const direct = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}`;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const r = await PROXY_FETCH(direct, 10000);
-      if (r) {
-        try {
-          const txt = await r.text();
-          if (txt && txt.includes(',') && txt.length > 50) {
-            const rows = parseCsv(txt);
-            if (rows.length > 0) return rows;
-          }
-        } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
-      }
-      if (attempt === 0) await new Promise(r => setTimeout(r, 400));
-    }
+    } catch(e) { /* keine Daten */ }
     return null;
   }
   function parseCsv(txt) {
