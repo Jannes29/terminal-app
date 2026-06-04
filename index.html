@@ -8292,6 +8292,45 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
 </script>
 
 
+<!-- ====== COLLECTOR-IMPORT: echte 24/7-Snapshots aus history.json in die Validierung holen ====== -->
+<script>
+(function(){
+  // Der 24/7-Collector schreibt echte Snapshots (synth:false) in history.json (öffentlich via Pages).
+  // Hier holen wir sie in macro_history_v2 → Walk-Forward-Validierung, Strategie-Lab & Scanner nutzen
+  // die VOLLE akkumulierte Echthistorie, nicht nur was dieser Browser selbst erfasst hat.
+  const KEY='macro_history_v2', MAX=6000;
+  async function importHistory(){
+    const urls=['history.json?cb='+Date.now(),
+                'https://jannes29.github.io/terminal-app/history.json?cb='+Date.now()];
+    for(const u of urls){
+      try{
+        const r=await fetch(u,{cache:'no-store'});
+        if(!r.ok) continue;
+        const data=await r.json();
+        const inc=(data&&Array.isArray(data.history))?data.history:(Array.isArray(data)?data:[]);
+        if(!inc.length) continue;
+        let cur=[]; try{ cur=JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){}
+        const seen=new Set(cur.map(s=>s&&s.t));
+        let added=0;
+        inc.forEach(s=>{ if(s&&s.t&&!seen.has(s.t)){ cur.push(s); seen.add(s.t); added++; } });
+        if(added){
+          cur.sort((a,b)=>(a.t||0)-(b.t||0));
+          if(cur.length>MAX) cur=cur.slice(-MAX);
+          localStorage.setItem(KEY, JSON.stringify(cur));
+          if(window.DEBUG) console.log('[COLLECTOR-IMPORT] '+added+' echte Snapshots importiert · gesamt '+cur.length);
+          // Validierung/Tuning neu anstoßen, damit die frischen Echtdaten sofort zählen
+          try{ if(window.tuneBiasWeights) window.tuneBiasWeights(); }catch(e){}
+          try{ window.dispatchEvent(new CustomEvent('macroUpdate')); }catch(e){}
+        }
+        return; // erste erreichbare Quelle gewinnt
+      }catch(e){ if(window.DEBUG)console.warn('[collector-import]',e); }
+    }
+  }
+  if(document.readyState!=='loading') setTimeout(importHistory,3000);
+  else document.addEventListener('DOMContentLoaded', ()=>setTimeout(importHistory,3000));
+})();
+</script>
+
 <!-- ====== COUNT-SYNC: Headline-Zahlen dynamisch aus tatsächlichen Karten ====== -->
 <script>
 (function(){
