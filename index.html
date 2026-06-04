@@ -10846,6 +10846,65 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     return rows;
   }
 
+  // ===== OECD KEI — frische, freie Wirtschaftsbreite je Land =====
+  // Quelle: OECD SDMX (sdmx.oecd.org, kostenlos, kein Key), monatlich aktuell.
+  // Deckt ALLE Währungsländer ab: CPI, Geldmenge M3, Einzelhandel, Frühindikator (CLI),
+  // Konsumklima, Arbeitslosigkeit — wird über die bestehenden CORS-Proxies geladen.
+  const OECD_BASE = 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_KEI@DF_KEI,4.0/';
+  const OECD_CTYS = 'GBR+JPN+CAN+AUS+NZL+CHE+USA+EA20';
+  const OECD_MEASURES = {
+    CP:     'CP.GR._Z._Z.GY',       // Verbraucherpreise YoY %
+    M3:     'MABM.GR._Z.Y.GY',      // Geldmenge M3 YoY %
+    RETAIL: 'TOVM.GR.G47.Y.GY',     // Einzelhandelsvolumen YoY %
+    UNEMP:  'UNEMP.PT_LF._T.Y._Z',  // Arbeitslosenquote %
+    CLI:    'LI.IX._T.AA._Z',       // Composite Leading Indicator (Index ~100)
+    CONF:   'CCICP.PB._Z.Y._Z'      // Konsumklima
+  };
+  const OECD_CACHE_KEY = 'oecd_kei_v1';
+  const OECD_TTL = 12 * 60 * 60 * 1000; // 12h
+  function parseCsvRow(line){
+    const out=[]; let cur=''; let q=false;
+    for(let i=0;i<line.length;i++){ const ch=line[i];
+      if(q){ if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=ch; }
+      else { if(ch===','){out.push(cur);cur='';} else if(ch==='"'){q=true;} else cur+=ch; } }
+    out.push(cur); return out;
+  }
+  async function oecdFetchMeasure(key){
+    const url = OECD_BASE + OECD_CTYS + '.M.' + OECD_MEASURES[key] + '?startPeriod=2024-06&format=csvfilewithlabels';
+    const r = await PROXY_FETCH(url, 15000);
+    if(!r) return null;
+    let txt=''; try{ txt = await r.text(); }catch(e){ return null; }
+    if(!txt || txt.indexOf('REF_AREA') < 0) return null;
+    const lines = txt.trim().split('\n');
+    const hdr = parseCsvRow(lines[0]);
+    const iC = hdr.indexOf('REF_AREA'), iT = hdr.indexOf('TIME_PERIOD'), iV = hdr.indexOf('OBS_VALUE');
+    if(iC<0||iT<0||iV<0) return null;
+    const latest={};
+    for(let i=1;i<lines.length;i++){
+      const row = parseCsvRow(lines[i]);
+      const c=row[iC], t=row[iT], v=parseFloat(row[iV]);
+      if(!c||!t||isNaN(v)) continue;
+      if(!latest[c] || t > latest[c].date) latest[c] = { v, date:t };
+    }
+    return Object.keys(latest).length ? latest : null;
+  }
+  let oecdRunning=false;
+  async function oecdRefreshAll(force){
+    if(oecdRunning) return; oecdRunning=true;
+    try{
+      let cache={}; try{ cache = JSON.parse(localStorage.getItem(OECD_CACHE_KEY)) || {}; }catch(e){}
+      if(!force && cache.ts && cache.data && (Date.now()-cache.ts) < OECD_TTL) return;
+      const data = cache.data || {};
+      for(const key of Object.keys(OECD_MEASURES)){
+        try{ const m = await oecdFetchMeasure(key); if(m) data[key]=m; }catch(e){ if(window.DEBUG)console.warn('[oecd]',key,e); }
+        await new Promise(r=>setTimeout(r,150));
+      }
+      try{ localStorage.setItem(OECD_CACHE_KEY, JSON.stringify({ ts:Date.now(), data })); }catch(e){}
+      if(typeof injectIntoBias==='function') injectIntoBias();
+    } finally { oecdRunning=false; }
+  }
+  window.oecdRefreshAll = oecdRefreshAll;
+
   // ===== Transform calculators =====
   function tfYoy(rows) {
     if (rows.length < 13) return { v: null, ch: null };
@@ -11412,6 +11471,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       await refreshSentiment();
       await refreshEarnings();
     }
+    oecdRefreshAll();   // frische OECD-Wirtschaftsbreite (CPI/M3/Einzelhandel/CLI) je Währung, 12h-Cache
     injectIntoBias();
   }, 2000);
 
@@ -11420,6 +11480,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     await refreshAll();
     await refreshSentiment();
     await refreshEarnings();
+    oecdRefreshAll();
     injectIntoBias();
   }, 60 * 60 * 1000);
 
@@ -16504,6 +16565,15 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     add('NZD','NZ_LABOR',1,0.08,'Neuseeland Arbeitslosigkeit');
     add('CHF','CH_INFLATION',1,0.09,'Schweiz CPI (SNB-Reaktion)');
     add('CHF','CH_LABOR',1,0.06,'Schweiz Arbeitslosigkeit');
+    // === OECD-KEI: frische Wirtschaftsbreite je Währung — Geldmenge M3, Einzelhandel, Frühindikator (CLI) ===
+    add('EUR','OECD:EA20:M3',1,0.05,'OECD/EZB Geldmenge M3'); add('EUR','OECD:EA20:RETAIL',1,0.05,'OECD Einzelhandel'); add('EUR','OECD:EA20:CLI',1,0.08,'OECD Frühindikator (CLI)');
+    add('GBP','OECD:GBR:M3',1,0.05,'OECD Geldmenge M3'); add('GBP','OECD:GBR:RETAIL',1,0.05,'OECD Einzelhandel'); add('GBP','OECD:GBR:CLI',1,0.08,'OECD Frühindikator (CLI)');
+    add('JPY','OECD:JPN:M3',1,0.05,'OECD Geldmenge M3'); add('JPY','OECD:JPN:RETAIL',1,0.05,'OECD Einzelhandel'); add('JPY','OECD:JPN:CLI',1,0.08,'OECD Frühindikator (CLI)');
+    add('CAD','OECD:CAN:M3',1,0.05,'OECD Geldmenge M3'); add('CAD','OECD:CAN:RETAIL',1,0.05,'OECD Einzelhandel'); add('CAD','OECD:CAN:CLI',1,0.08,'OECD Frühindikator (CLI)');
+    add('AUD','OECD:AUS:M3',1,0.05,'OECD Geldmenge M3'); add('AUD','OECD:AUS:RETAIL',1,0.05,'OECD Einzelhandel'); add('AUD','OECD:AUS:CLI',1,0.08,'OECD Frühindikator (CLI)');
+    add('NZD','OECD:NZL:RETAIL',1,0.05,'OECD Einzelhandel'); add('NZD','OECD:NZL:CLI',1,0.08,'OECD Frühindikator (CLI)');
+    add('CHF','OECD:CHE:RETAIL',1,0.05,'OECD Einzelhandel'); add('CHF','OECD:CHE:CLI',1,0.08,'OECD Frühindikator (CLI)');
+    add('USD','OECD:USA:CLI',1,0.06,'OECD Frühindikator (CLI)');
   })(ASSET_DRIVERS);
   window.ASSET_DRIVERS = ASSET_DRIVERS;
 
@@ -16517,12 +16587,35 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   }
   window.getFred = getFred;
 
+  // OECD-KEI Cache-Accessor: frischer Wirtschaftswert je Land/Kennzahl, sonst null.
+  function getOecd(country, measure){
+    try{
+      const c = JSON.parse(localStorage.getItem('oecd_kei_v1') || '{}');
+      const d = c.data && c.data[measure] && c.data[measure][country];
+      return d && typeof d.v === 'number' ? d.v : null;
+    }catch(e){ return null; }
+  }
+  window.getOecd = getOecd;
+
   // Driver-name → numeric value (z-score-ish, roughly [-3,+3]) from FRED live cache + f.* bucket.
   // FRED takes precedence when available; falls back to TradingView-derived factors.
   // Returns null if no proxy available — factor is skipped so weight-norm stays clean.
   function mapDriverToFactor(name, f) {
     const n = v => (typeof v === 'number' && !isNaN(v)) ? v : null;
     const fred = getFred;
+    // OECD-KEI generische frische Treiber: name = "OECD:<LAND>:<KENNZAHL>"
+    if (name.indexOf('OECD:') === 0) {
+      const parts = name.split(':'), cty = parts[1], meas = parts[2];
+      const x = getOecd(cty, meas);
+      if (x == null) return null;
+      if (meas === 'M3')     return -(x - 5) / 4;     // schnelle Geldmengenexpansion → Währung mild negativ
+      if (meas === 'RETAIL') return x / 3;            // starker Konsum → Währung positiv
+      if (meas === 'CLI')    return (x - 100) / 1.2;  // Frühindikator > 100 → Aufschwung → positiv
+      if (meas === 'CONF')   return x / 12;           // Konsumklima
+      if (meas === 'CP')     return (x - 2.5) / 1.0;  // Inflation → Notenbank hawkisch → positiv
+      if (meas === 'UNEMP')  return -(x - 5) / 1.5;   // niedrigere Arbeitslosigkeit → stark
+      return null;
+    }
     switch (name) {
       // USD / yields  — FRED live preferred
       case 'DXY': {
@@ -16597,9 +16690,9 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       }
       // ── NEU: Inflation als direkter FX-Treiber (höhere Inflation → Notenbank hawkisch → Währung stark) ──
       case 'US_INFLATION': { const cp=fred('CPILFESL'), pce=fred('PCEPILFE'); const v=(pce!=null?pce:cp); return v!=null? (v-2.5)/0.8 : null; }
-      case 'EU_INFLATION': { const h=fred('CP0000EZ19M086NEST'); return h!=null? (h-2.5)/1.0 : null; }
-      case 'UK_INFLATION': { const c=fred('GBRCPIALLMINMEI'); return c!=null? (c-2.5)/1.2 : null; }
-      case 'JP_INFLATION': { const c=fred('JPNCPIALLMINMEI'); return c!=null? (c-1.0)/0.8 : null; }
+      case 'EU_INFLATION': { const h=getOecd('EA20','CP') ?? fred('CP0000EZ19M086NEST'); return h!=null? (h-2.5)/1.0 : null; }
+      case 'UK_INFLATION': { const c=getOecd('GBR','CP') ?? fred('GBRCPIALLMINMEI'); return c!=null? (c-2.5)/1.2 : null; }
+      case 'JP_INFLATION': { const c=getOecd('JPN','CP') ?? fred('JPNCPIALLMINMEI'); return c!=null? (c-1.0)/0.8 : null; }
       // ── Arbeitsmarkt je Währung (niedrigere Arbeitslosigkeit = stärkere Wirtschaft = Währung stark) ──
       case 'UK_LABOR': { const u=fred('LRHUTTTTGBM156S'); return u!=null? -(u-4.2)/0.8 : null; }
       case 'JP_LABOR': { const u=fred('LRUNTTTTJPM156S'); return u!=null? -(u-2.6)/0.4 : null; }
@@ -16608,10 +16701,10 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       case 'NZ_LABOR': { const u=fred('LRHUTTTTNZQ156S'); return u!=null? -(u-4.2)/0.9 : null; }
       case 'CH_LABOR': { const u=fred('LRHUTTTTCHQ156S'); return u!=null? -(u-4.5)/0.6 : null; }
       // ── Inflation je Währung (höhere Inflation → Notenbank hawkisch → Währung stark) ──
-      case 'CA_INFLATION': { const c=fred('CANCPIALLMINMEI'); return c!=null? (c-2.5)/1.0 : null; }
-      case 'AU_INFLATION': { const c=fred('AUSCPIALLQINMEI'); return c!=null? (c-2.7)/1.2 : null; }
-      case 'NZ_INFLATION': { const c=fred('NZLCPIALLQINMEI'); return c!=null? (c-2.5)/1.2 : null; }
-      case 'CH_INFLATION': { const c=fred('CHECPIALLMINMEI'); return c!=null? (c-1.0)/0.8 : null; }
+      case 'CA_INFLATION': { const c=getOecd('CAN','CP') ?? fred('CANCPIALLMINMEI'); return c!=null? (c-2.5)/1.0 : null; }
+      case 'AU_INFLATION': { const c=getOecd('AUS','CP') ?? fred('AUSCPIALLQINMEI'); return c!=null? (c-2.7)/1.2 : null; }
+      case 'NZ_INFLATION': { const c=getOecd('NZL','CP') ?? fred('NZLCPIALLQINMEI'); return c!=null? (c-2.5)/1.2 : null; }
+      case 'CH_INFLATION': { const c=getOecd('CHE','CP') ?? fred('CHECPIALLMINMEI'); return c!=null? (c-1.0)/0.8 : null; }
       case 'GLOBAL_DOLLAR_LIQUIDITY': {
         const tga = fred('WTREGEN'), rrp = fred('RRPONTSYD');
         if (tga != null || rrp != null) return (((tga || 0) / 1e5) + ((rrp || 0) / 500)) / 2;
