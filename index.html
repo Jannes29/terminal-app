@@ -10676,7 +10676,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     { id:'CIVPART',    lbl:'Labor Force Part.',  cat:'us', tf:'lvl', unit:'%', impact:'growth' },
     // === PRIORITÄT: Währungs-Wirtschaftsdaten (früh laden, da langsamer Proxy) — UK/AU/NZ/CA/CH Inflation + Arbeitsmarkt ===
     { id:'GBRCPIALLMINMEI', lbl:'UK CPI',   cat:'uk', tf:'yoy', unit:'%', impact:'inflation' },
-    { id:'LMUNRRTTGBM156S', lbl:'UK Unemployment',cat:'uk',tf:'lvl',unit:'%',impact:'growth' },
+    { id:'LRHUTTTTGBM156S', lbl:'UK Unemployment',cat:'uk',tf:'lvl',unit:'%',impact:'growth' },
     { id:'AUSCPIALLQINMEI', lbl:'AU CPI',  cat:'au', tf:'yoy', unit:'%', impact:'inflation' },
     { id:'LRHUTTTTAUM156S', lbl:'AU Unemployment', cat:'au', tf:'lvl', unit:'%', impact:'growth' },
     { id:'NZLCPIALLQINMEI', lbl:'NZ CPI',  cat:'nz', tf:'yoy', unit:'%', impact:'inflation' },
@@ -13132,7 +13132,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
         // === ARBEITSMARKT ===
         if (isUSDRelevant) items.push({ cat:'💼 US-Arbeitsmarkt', txt:`Live: UNRATE ${fredVal('UNRATE')} · AHE-Lohnwachstum ${fredVal('CES0500000003')} YoY · Initial Claims via FRED. NFP/JOLTS = Hauptpivot-Trigger für Fed-Pace.` });
         if (isEURRelevant) items.push({ cat:'💼 Eurozone-Arbeitsmarkt', txt:`Live: EU-Unemployment ${fredVal('LRHUTTTTEZM156S')}. EZB-Fokus auf 2nd-Round-Effekte über Service-Inflation und Lohn-Dynamik.` });
-        if (isGBPRelevant) items.push({ cat:'💼 UK-Arbeitsmarkt', txt:`Live: UK-Unemployment ${fredVal('LMUNRRTTGBM156S')}. BoE-Bailey-Pfad hängt an Service-CPI + Wage-Growth.` });
+        if (isGBPRelevant) items.push({ cat:'💼 UK-Arbeitsmarkt', txt:`Live: UK-Unemployment ${fredVal('LRHUTTTTGBM156S')}. BoE-Bailey-Pfad hängt an Service-CPI + Wage-Growth.` });
         if (isJPYRelevant) items.push({ cat:'💼 Japan-Arbeitsmarkt', txt:`Live: JP-Unemployment ${fredVal('LRUNTTTTJPM156S')}. Shunto-Lohn-Runden = primärer Wage-Input für BoJ-Pace.` });
 
         // === INFLATION ===
@@ -16601,7 +16601,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       case 'UK_INFLATION': { const c=fred('GBRCPIALLMINMEI'); return c!=null? (c-2.5)/1.2 : null; }
       case 'JP_INFLATION': { const c=fred('JPNCPIALLMINMEI'); return c!=null? (c-1.0)/0.8 : null; }
       // ── Arbeitsmarkt je Währung (niedrigere Arbeitslosigkeit = stärkere Wirtschaft = Währung stark) ──
-      case 'UK_LABOR': { const u=fred('LMUNRRTTGBM156S'); return u!=null? -(u-4.2)/0.8 : null; }
+      case 'UK_LABOR': { const u=fred('LRHUTTTTGBM156S'); return u!=null? -(u-4.2)/0.8 : null; }
       case 'JP_LABOR': { const u=fred('LRUNTTTTJPM156S'); return u!=null? -(u-2.6)/0.4 : null; }
       case 'CA_LABOR': { const u=fred('LRHUTTTTCAM156S'); return u!=null? -(u-6.0)/1.0 : null; }
       case 'AU_LABOR': { const u=fred('LRHUTTTTAUM156S'); return u!=null? -(u-4.2)/0.8 : null; }
