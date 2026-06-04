@@ -8191,18 +8191,21 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     <span id="scanStatus" style="font-size:11px;color:var(--text-2,#9ca3af);">Liest live aus der Bias-Engine — aktualisiert sich automatisch.</span>
   </div>
   <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:10.5px;color:var(--text-2,#9ca3af);">
-    <span><b style="color:#22d3ee;">★★ TOP</b> = HANDELN + saisonal bestätigt</span>
+    <span><b style="color:#22d3ee;">★★ TOP</b> = HANDELN + alle Datenquellen einig (voller Konsens)</span>
     <span><b style="color:#22c55e;">★ HANDELN</b> = starker Bias + belegte Konfidenz + volle Daten</span>
     <span><b style="color:#fbbf24;">BEOBACHTEN</b> = Signal da, aber nicht alle Kriterien</span>
     <span><b style="color:#6b7280;">MEIDEN</b> = zu schwach / unsicher / dünne Daten</span>
   </div>
-  <div style="font-size:10px;color:var(--text-2,#9ca3af);margin-bottom:10px;">📅 <b>Saisonal 30T</b>: ✓ = die historische Vorwärts-30-Tage-Saisonalität (15J) bestätigt die Bias-Richtung · ✗ = sie widerspricht. Klick „Saisonal abgleichen" zum Laden (einmal pro Tag, dann gecacht).</div>
+  <div style="font-size:10px;color:var(--text-2,#9ca3af);margin-bottom:10px;line-height:1.6;">🎯 <b>KONSENS</b> = von wie vielen unabhängigen Quellen (ML-Modell · Saisonalität · Risk-Regime) die Makro-Bias-Richtung bestätigt wird. <b>3/3</b> = volle Confluence → die treffsicherste Teilmenge. Das ist der seriöse Weg zu hoher Trefferquote: nur handeln, wenn mehrere unabhängige Daten dasselbe sagen.<br>📅 <b>Saisonal 30T</b>: ✓ = die 15-Jahre-Saisonalität der nächsten 30 Tage bestätigt die Richtung · ✗ = widerspricht. Klick „Saisonal abgleichen" zum Laden.</div>
   <div id="scanTable" style="overflow-x:auto;">—</div>
 </div>
 <script>
 (function(){
   const NM={USD:'USD',EUR:'EUR',GBP:'GBP',JPY:'JPY',CHF:'CHF',AUD:'AUD',NZD:'NZD',CAD:'CAD',NAS100:'NAS100',SPX500:'S&P500',GER40:'DAX',FTSE:'FTSE 100',XAU:'Gold',XAG:'Silber',XCU:'Kupfer',WTI:'WTI Öl',NGAS:'Erdgas',ZW:'Weizen',ZC:'Mais',ZS:'Sojabohnen',KC:'Kaffee',SB:'Zucker',CC:'Kakao',CT:'Baumwolle',BTC:'Bitcoin',ETH:'Ethereum',SOL:'Solana',BRENT:'Brent',XPT:'Platin',XPD:'Palladium'};
   const FX=['USD','EUR','GBP','JPY','CHF','AUD','NZD','CAD'];
+  // Risk-Regime-Beta: profitiert das Asset von Risk-ON (+) oder ist es ein Hafen (Risk-OFF, −)?
+  const RISK_ON={AUD:1,NZD:1,CAD:1,NAS100:1,SPX500:1,GER40:1,FTSE:1,XCU:1,WTI:1,BRENT:1,BTC:1,ETH:1,SOL:1};
+  const RISK_OFF={JPY:1,CHF:1,USD:1,XAU:1};
   function status(t,c){ const e=document.getElementById('scanStatus'); if(e){e.textContent=t; e.style.color=c||'var(--text-2,#9ca3af)';} }
   function bias30(cs){ const amp=Math.sign(cs)*Math.pow(Math.abs(cs),0.55); return Math.max(22,Math.min(78,Math.round(50+amp*26))); }
   // ── Seasonality-Abgleich: Vorwärts-30-Tage-Richtung aus echter Historie (Worker), gecacht pro Tag ──
@@ -8226,6 +8229,8 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     const conf=window.BIAS_CONFIDENCE||{};
     const cov=window.BIAS_COVERAGE||{};
     const contrib=window.BIAS_CONTRIBUTIONS||{};
+    const reg=(window.MACRO&&window.MACRO.globalRegime)||0;
+    const ml=window.MACRO_ML_PRED||{};
     const keys=Object.keys(cs).filter(a=>cs[a]!=null&&NM[a]);
     if(!keys.length){ document.getElementById('scanTable').innerHTML='<div style="padding:20px;color:var(--text-2,#9ca3af);font-size:12px;">Engine lädt noch — gleich verfügbar. Klick „Scannen" oder kurz warten.</div>'; return; }
     const rows=keys.map(a=>{
@@ -8238,14 +8243,24 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       if(Math.abs(score)>=0.25 && cf>=0.5 && cv>=80){ verdict='★ HANDELN'; vc='#22c55e'; }
       else if(Math.abs(score)>=0.20 && cv>=60){ verdict='BEOBACHTEN'; vc='#fbbf24'; }
       else { verdict='MEIDEN'; vc='#6b7280'; }
-      // Saisonaler Abgleich: stimmt die saisonale Vorwärts-Richtung mit der Bias-Richtung überein?
-      const long=score>0; const se=SEA&&SEA[a]; let seaCell='–', seaCol='#6b7280', seaMatch=null;
-      if(se){ seaMatch=(se.dir>0)===long; seaCell=(seaMatch?'✓ ':'✗ ')+(se.avgPct>=0?'+':'')+se.avgPct+'% ('+se.wr+'%)'; seaCol=seaMatch?'#22c55e':'#ef4444'; conviction*=seaMatch?1.3:0.85; if(verdict.indexOf('HANDELN')>=0 && seaMatch){ verdict='★★ TOP'; vc='#22d3ee'; } }
-      return {a,score,cv,cf,conviction,drv,verdict,vc,seaCell,seaCol};
+      // ── Multi-Quellen-Konsens: Makro-Bias (Anker) + ML-Modell + Saisonalität + Risk-Regime ──
+      const dirBias=score>0?1:-1; const long=score>0;
+      const se=SEA&&SEA[a]; let seaCell='–', seaCol='#6b7280';
+      const seaVote = se? se.dir : 0;
+      if(se){ const sm=seaVote===dirBias; seaCell=(sm?'✓ ':'✗ ')+(se.avgPct>=0?'+':'')+se.avgPct+'%'; seaCol=sm?'#22c55e':'#ef4444'; }
+      const mlp=ml[a]; const mlVote = (mlp&&mlp.dir)? (mlp.dir>0?1:-1) : 0;
+      let regVote=0; if(Math.abs(reg)>=0.15){ if(RISK_ON[a]) regVote=reg>0?1:-1; else if(RISK_OFF[a]) regVote=reg>0?-1:1; }
+      const votes=[mlVote,seaVote,regVote].filter(v=>v!==0);
+      const agree=votes.filter(v=>v===dirBias).length, total=votes.length;
+      const konsCell = total? (agree+'/'+total) : '–';
+      const konsCol = total? (agree===total?'#22d3ee':agree>total/2?'#22c55e':agree===0?'#ef4444':'#fbbf24') : '#6b7280';
+      if(total) conviction *= 0.6 + 0.8*(agree/total); // Confluence verstärkt/dämpft Konviktion
+      if(verdict.indexOf('HANDELN')>=0 && total>=2 && agree===total){ verdict='★★ TOP'; vc='#22d3ee'; }
+      return {a,score,cv,cf,conviction,drv,verdict,vc,seaCell,seaCol,konsCell,konsCol};
     }).sort((x,y)=>y.conviction-x.conviction);
     const isFX=a=>FX.includes(a);
     let h='<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="color:var(--text-2,#9ca3af);text-align:left;font-size:9.5px;letter-spacing:0.5px;">'+
-      '<th style="padding:5px 6px;">ASSET</th><th>RICHTUNG</th><th style="text-align:right;">BIAS 30T</th><th style="text-align:right;">KONFIDENZ</th><th style="text-align:right;">DATEN</th><th>HAUPTTREIBER</th><th style="text-align:right;">SAISONAL 30T</th><th style="text-align:center;">VERDIKT</th></tr></thead><tbody>';
+      '<th style="padding:5px 6px;">ASSET</th><th>RICHTUNG</th><th style="text-align:right;">BIAS 30T</th><th style="text-align:right;">KONFIDENZ</th><th style="text-align:right;">DATEN</th><th>HAUPTTREIBER</th><th style="text-align:right;">SAISONAL 30T</th><th style="text-align:center;">KONSENS</th><th style="text-align:center;">VERDIKT</th></tr></thead><tbody>';
     rows.forEach(r=>{
       const long=r.score>0;
       const dirTxt = isFX(r.a) ? (long?'LONG · stark':'SHORT · schwach') : (long?'LONG':'SHORT');
@@ -8260,6 +8275,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
         <td style="text-align:right;color:${cvCol};">${r.cv}%</td>
         <td style="color:var(--text-2,#9ca3af);font-size:10px;">${r.drv||'—'}</td>
         <td style="text-align:right;color:${r.seaCol};font-size:10px;">${r.seaCell}</td>
+        <td style="text-align:center;color:${r.konsCol};font-weight:700;font-size:10px;">${r.konsCell}</td>
         <td style="text-align:center;"><span style="color:${r.vc};font-weight:700;font-size:10px;">${r.verdict}</span></td></tr>`;
     });
     document.getElementById('scanTable').innerHTML=h+'</tbody></table>';
