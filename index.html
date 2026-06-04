@@ -2832,16 +2832,28 @@
 
           u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)
         ];
-        async function fetchText(url) {
-          try { const r = await fetch(url, {cache:'no-store'}); if (r.ok) return await r.text(); } catch(e){ if(window.DEBUG)console.warn('[caught]',e); }
+        async function fetchTO(url, ms) {
+          const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), ms);
+          try { const r = await fetch(url, {cache:'no-store', signal: ctrl.signal}); clearTimeout(to); if (r.ok) return await r.text(); }
+          catch(e){ clearTimeout(to); if(window.DEBUG)console.warn('[caught]',e); }
+          return null;
+        }
+        async function fetchText(series) {
+          // 1) Proxies mit begrenztem Zeitraum (cosd) → kleine Datei, schnell. Mit Timeout (kein Hängen!).
+          const cosd = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 2); return d.toISOString().slice(0,10); })();
+          const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${series}&cosd=${cosd}`;
           for (const p of PROXIES) {
-            try { const r = await fetch(p(url), {cache:'no-store'}); if (!r.ok) continue; return await r.text(); } catch(e){ if(window.DEBUG)console.warn('[caught]',e); }
+            const t = await fetchTO(p(url), 8000);
+            if (t && t.includes(',') && t.length > 30 && !/FREDSTATUS|DOCTYPE|Not allowed|<html/i.test(t)) return t;
           }
-          throw new Error('proxy fail');
+          // 2) Fallback: eigener Worker (zuverlässig für monatliche Serien, keine IP-Drosselung)
+          const wtxt = await fetchTO('https://kayser-data.mehmedkayser.workers.dev/?fred=' + encodeURIComponent(series), 7000);
+          if (wtxt && wtxt.includes(',') && wtxt.length > 30 && !/FREDSTATUS|DOCTYPE/.test(wtxt)) return wtxt;
+          return null;
         }
         async function fetchRate(series) {
-          const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${series}`;
-          const txt = await fetchText(url);
+          const txt = await fetchText(series);
+          if (!txt) return null;
           const lines = txt.trim().split(/\r?\n/);
           for (let i = lines.length - 1; i >= 1; i--) {
             const parts = lines[i].split(',');
