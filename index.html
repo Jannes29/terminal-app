@@ -10684,7 +10684,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     { id:'CANCPIALLMINMEI', lbl:'CA CPI',  cat:'ca', tf:'yoy', unit:'%', impact:'inflation' },
     { id:'LRHUTTTTCAM156S', lbl:'CA Unemployment', cat:'ca', tf:'lvl', unit:'%', impact:'growth' },
     { id:'CHECPIALLMINMEI', lbl:'CH CPI',  cat:'ch', tf:'yoy', unit:'%', impact:'inflation' },
-    { id:'LRHUTTTTCHM156S', lbl:'CH Unemployment', cat:'ch', tf:'lvl', unit:'%', impact:'growth' },
+    { id:'LRHUTTTTCHQ156S', lbl:'CH Unemployment', cat:'ch', tf:'lvl', unit:'%', impact:'growth' },
     // US Growth
     { id:'GDPC1',      lbl:'Real GDP (B$)',  cat:'us', tf:'yoy', unit:'%', impact:'growth' },
     { id:'INDPRO',     lbl:'Industrial Prod.', cat:'us', tf:'yoy', unit:'%', impact:'growth' },
@@ -16606,7 +16606,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       case 'CA_LABOR': { const u=fred('LRHUTTTTCAM156S'); return u!=null? -(u-6.0)/1.0 : null; }
       case 'AU_LABOR': { const u=fred('LRHUTTTTAUM156S'); return u!=null? -(u-4.2)/0.8 : null; }
       case 'NZ_LABOR': { const u=fred('LRHUTTTTNZQ156S'); return u!=null? -(u-4.2)/0.9 : null; }
-      case 'CH_LABOR': { const u=fred('LRHUTTTTCHM156S'); return u!=null? -(u-2.5)/0.7 : null; }
+      case 'CH_LABOR': { const u=fred('LRHUTTTTCHQ156S'); return u!=null? -(u-4.5)/0.6 : null; }
       // ── Inflation je Währung (höhere Inflation → Notenbank hawkisch → Währung stark) ──
       case 'CA_INFLATION': { const c=fred('CANCPIALLMINMEI'); return c!=null? (c-2.5)/1.0 : null; }
       case 'AU_INFLATION': { const c=fred('AUSCPIALLQINMEI'); return c!=null? (c-2.7)/1.2 : null; }
