@@ -10731,6 +10731,18 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     { id:'MKTGDPCNA646NWDB', lbl:'CN GDP', cat:'cn', tf:'yoy', unit:'%', impact:'growth' },
     { id:'INTDSRCNM193N', lbl:'PBoC Rate', cat:'cn', tf:'lvl', unit:'%', impact:'rates' },
     { id:'XTEXVA01CNM664S', lbl:'CN Exports',cat:'cn',tf:'yoy',unit:'%', impact:'growth' },
+    // Australien
+    { id:'AUSCPIALLQINMEI', lbl:'AU CPI',  cat:'au', tf:'yoy', unit:'%', impact:'inflation' },
+    { id:'LRHUTTTTAUM156S', lbl:'AU Unemployment', cat:'au', tf:'lvl', unit:'%', impact:'growth' },
+    // Neuseeland
+    { id:'NZLCPIALLQINMEI', lbl:'NZ CPI',  cat:'nz', tf:'yoy', unit:'%', impact:'inflation' },
+    { id:'LRHUTTTTNZQ156S', lbl:'NZ Unemployment', cat:'nz', tf:'lvl', unit:'%', impact:'growth' },
+    // Kanada
+    { id:'CANCPIALLMINMEI', lbl:'CA CPI',  cat:'ca', tf:'yoy', unit:'%', impact:'inflation' },
+    { id:'LRHUTTTTCAM156S', lbl:'CA Unemployment', cat:'ca', tf:'lvl', unit:'%', impact:'growth' },
+    // Schweiz
+    { id:'CHECPIALLMINMEI', lbl:'CH CPI',  cat:'ch', tf:'yoy', unit:'%', impact:'inflation' },
+    { id:'LRHUTTTTCHM156S', lbl:'CH Unemployment', cat:'ch', tf:'lvl', unit:'%', impact:'growth' },
     // Sentiment proxies
     { id:'VIXCLS',     lbl:'VIX',           cat:'sent', tf:'lvl', unit:'', impact:'risk' },
     { id:'OVXCLS',     lbl:'OVX (Oil Vol)', cat:'sent', tf:'lvl', unit:'', impact:'risk' },
@@ -16470,6 +16482,17 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     add('EUR','EU_INFLATION',1,0.10,'Eurostat HICP (EZB-Reaktion)');
     add('GBP','UK_INFLATION',1,0.10,'ONS CPI (BoE-Reaktion)');
     add('JPY','JP_INFLATION',1,0.12,'Japan CPI (BoJ-Normalisierung)');
+    // Arbeitsmarkt + Inflation für ALLE übrigen Währungen → jede Volkswirtschaft eigenständig gedeutet
+    add('GBP','UK_LABOR',1,0.08,'ONS Arbeitslosigkeit');
+    add('JPY','JP_LABOR',1,0.07,'Japan Arbeitslosigkeit');
+    add('CAD','CA_INFLATION',1,0.10,'Kanada CPI (BoC-Reaktion)');
+    add('CAD','CA_LABOR',1,0.08,'Kanada Arbeitslosigkeit');
+    add('AUD','AU_INFLATION',1,0.10,'Australien CPI (RBA-Reaktion)');
+    add('AUD','AU_LABOR',1,0.08,'Australien Arbeitslosigkeit');
+    add('NZD','NZ_INFLATION',1,0.10,'Neuseeland CPI (RBNZ-Reaktion)');
+    add('NZD','NZ_LABOR',1,0.08,'Neuseeland Arbeitslosigkeit');
+    add('CHF','CH_INFLATION',1,0.09,'Schweiz CPI (SNB-Reaktion)');
+    add('CHF','CH_LABOR',1,0.06,'Schweiz Arbeitslosigkeit');
   })(ASSET_DRIVERS);
   window.ASSET_DRIVERS = ASSET_DRIVERS;
 
@@ -16566,6 +16589,18 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       case 'EU_INFLATION': { const h=fred('CP0000EZ19M086NEST'); return h!=null? (h-2.5)/1.0 : null; }
       case 'UK_INFLATION': { const c=fred('GBRCPIALLMINMEI'); return c!=null? (c-2.5)/1.2 : null; }
       case 'JP_INFLATION': { const c=fred('JPNCPIALLMINMEI'); return c!=null? (c-1.0)/0.8 : null; }
+      // ── Arbeitsmarkt je Währung (niedrigere Arbeitslosigkeit = stärkere Wirtschaft = Währung stark) ──
+      case 'UK_LABOR': { const u=fred('LMUNRRTTGBM156S'); return u!=null? -(u-4.2)/0.8 : null; }
+      case 'JP_LABOR': { const u=fred('LRUNTTTTJPM156S'); return u!=null? -(u-2.6)/0.4 : null; }
+      case 'CA_LABOR': { const u=fred('LRHUTTTTCAM156S'); return u!=null? -(u-6.0)/1.0 : null; }
+      case 'AU_LABOR': { const u=fred('LRHUTTTTAUM156S'); return u!=null? -(u-4.2)/0.8 : null; }
+      case 'NZ_LABOR': { const u=fred('LRHUTTTTNZQ156S'); return u!=null? -(u-4.2)/0.9 : null; }
+      case 'CH_LABOR': { const u=fred('LRHUTTTTCHM156S'); return u!=null? -(u-2.5)/0.7 : null; }
+      // ── Inflation je Währung (höhere Inflation → Notenbank hawkisch → Währung stark) ──
+      case 'CA_INFLATION': { const c=fred('CANCPIALLMINMEI'); return c!=null? (c-2.5)/1.0 : null; }
+      case 'AU_INFLATION': { const c=fred('AUSCPIALLQINMEI'); return c!=null? (c-2.7)/1.2 : null; }
+      case 'NZ_INFLATION': { const c=fred('NZLCPIALLQINMEI'); return c!=null? (c-2.5)/1.2 : null; }
+      case 'CH_INFLATION': { const c=fred('CHECPIALLMINMEI'); return c!=null? (c-1.0)/0.8 : null; }
       case 'GLOBAL_DOLLAR_LIQUIDITY': {
         const tga = fred('WTREGEN'), rrp = fred('RRPONTSYD');
         if (tga != null || rrp != null) return (((tga || 0) / 1e5) + ((rrp || 0) / 500)) / 2;
