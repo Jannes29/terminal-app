@@ -16410,6 +16410,23 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       { name:'NETWORK_UPTIME', sign:+1, weight:0.04, lag_days:0, source:'Solana outage 2022-23' }
     ]
   };
+  // ── NEU: reale Wirtschafts-Treiber additiv anhängen (Arbeitsmarkt, Immobilien, Konsum, Industrie, EZ-Wachstum).
+  // Ändert keine bestehenden Treiber — fügt nur hinzu. Treiber liefern nur dann, wenn die FRED-Serie geladen ist (sonst übersprungen).
+  (function(AD){
+    const add=(asset,name,sign,weight,source)=>{ if(AD[asset]) AD[asset].push({name,sign,weight,lag_days:0,source}); };
+    add('USD','US_LABOR',1,0.12,'BLS NFP/Arbeitslosigkeit/Erstanträge');
+    add('USD','US_WAGE_GROWTH',1,0.07,'BLS Avg Hourly Earnings');
+    add('USD','US_RETAIL',1,0.06,'Census Retail Sales');
+    add('USD','US_BANK_LENDING',1,0.05,'Fed C&I Loans (Kreditwachstum)');
+    add('SPX500','US_RETAIL',1,0.10,'Census Retail Sales');
+    add('SPX500','US_CONSUMER_CONF',1,0.08,'UMich/Conference-Board');
+    add('NAS100','US_CONSUMER_CONF',1,0.07,'UMich/Conference-Board');
+    add('GER40','US_CONSUMER_CONF',1,0.05,'US-Konjunktur-Spillover');
+    add('XCU','US_INDUSTRIAL_PROD',1,0.12,'Fed Industrieproduktion');
+    add('XCU','US_HOUSING',1,0.10,'Census Housing Starts/Permits');
+    add('WTI','US_INDUSTRIAL_PROD',1,0.08,'Fed Industrieproduktion');
+    add('EUR','EU_GROWTH',1,0.10,'Eurostat Arbeitslosigkeit/Konsumklima');
+  })(ASSET_DRIVERS);
   window.ASSET_DRIVERS = ASSET_DRIVERS;
 
   // Read latest FRED value from cache (populated by macro_fund_cache_v1, refreshed hourly).
@@ -16466,8 +16483,39 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
         const gdp = window.GDPNOW?.value;
         if (gdp != null) return (gdp - 2.0) / 1.5;
         const ism = fred('NAPM');
-        if (ism != null) return (ism - 50) / 5;
+        if (ism != null && ism > 20) return (ism - 50) / 5;
         return n(f.industrial_utility) != null ? f.industrial_utility / 1.5 : null;
+      }
+      // ── NEU: reale Wirtschaftsdaten aus FRED-Live-Cache (Arbeitsmarkt, Immobilien, Konsum, Industrie) ──
+      case 'US_LABOR': {
+        const nfp=fred('PAYEMS'), unr=fred('UNRATE'), claims=fred('ICSA');
+        let s=0,c=0;
+        if(nfp!=null){ s+=(nfp-150)/90; c++; }        // NFP-Monatszuwachs >150k = stark
+        if(unr!=null){ s+=-(unr-4.1)/0.5; c++; }       // niedrigere Arbeitslosigkeit = stark
+        if(claims!=null){ s+=-(claims-235)/40; c++; }  // weniger Erstanträge = stark
+        return c? s/c : null;
+      }
+      case 'US_WAGE_GROWTH': { const w=fred('CES0500000003'); return w!=null? (w-4.0)/0.8 : null; }
+      case 'US_HOUSING': {
+        const h=fred('HOUST'), p=fred('PERMIT'); let s=0,c=0;
+        if(h!=null){ s+=(h-1400)/170; c++; }
+        if(p!=null){ s+=(p-1450)/170; c++; }
+        return c? s/c : null;
+      }
+      case 'US_RETAIL': { const r=fred('RSAFS'); return r!=null? (r-4.0)/2.0 : null; }
+      case 'US_CONSUMER_CONF': {
+        const u=fred('UMCSENT'), cc=fred('CSCICP03USM665S');
+        if(u!=null) return (u-70)/12;
+        if(cc!=null) return (cc-100)/3;
+        return null;
+      }
+      case 'US_INDUSTRIAL_PROD': { const ip=fred('INDPRO'); return ip!=null? ip/2.0 : null; }
+      case 'US_BANK_LENDING': { const b=fred('BUSLOANS'); return b!=null? (b-3.0)/4.0 : null; }
+      case 'EU_GROWTH': {
+        const u=fred('LRHUTTTTEZM156S'), cc=fred('CSCICP03EZM665S'); let s=0,c=0;
+        if(u!=null){ s+=-(u-7.0)/1.0; c++; }
+        if(cc!=null){ s+=(cc-100)/3; c++; }
+        return c? s/c : null;
       }
       case 'GLOBAL_DOLLAR_LIQUIDITY': {
         const tga = fred('WTREGEN'), rrp = fred('RRPONTSYD');
