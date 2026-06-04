@@ -10806,8 +10806,22 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     return null;
   }
 
-  // ===== FRED CSV fetcher (multi-proxy) =====
+  // ===== FRED CSV fetcher — eigener Worker zuerst (serverseitig, schnell), dann Proxy-Fallback =====
   async function fredFetch(seriesId) {
+    // 1) Eigener Cloudflare-Worker: holt fredgraph.csv serverseitig (kein langsamer CORS-Proxy)
+    try {
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 12000);
+      const wr = await fetch('https://kayser-data.mehmedkayser.workers.dev/?fred=' + encodeURIComponent(seriesId), { cache:'no-store', signal: ctrl.signal });
+      clearTimeout(to);
+      if (wr && wr.ok) {
+        const txt = await wr.text();
+        if (txt && txt.includes(',') && txt.length > 50) {
+          const rows = parseCsv(txt);
+          if (rows.length > 0) return rows;
+        }
+      }
+    } catch(e) { /* Fallback auf Proxies */ }
+    // 2) Fallback: öffentliche CORS-Proxies
     const direct = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}`;
     for (let attempt = 0; attempt < 2; attempt++) {
       const r = await PROXY_FETCH(direct, 10000);
