@@ -10674,6 +10674,17 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     { id:'ICSA',       lbl:'Initial Claims', cat:'us', tf:'lvl', unit:'k', impact:'growth' },
     { id:'CES0500000003', lbl:'Avg Hourly Earn.', cat:'us', tf:'yoy', unit:'%', impact:'inflation' },
     { id:'CIVPART',    lbl:'Labor Force Part.',  cat:'us', tf:'lvl', unit:'%', impact:'growth' },
+    // === PRIORITÄT: Währungs-Wirtschaftsdaten (früh laden, da langsamer Proxy) — UK/AU/NZ/CA/CH Inflation + Arbeitsmarkt ===
+    { id:'GBRCPIALLMINMEI', lbl:'UK CPI',   cat:'uk', tf:'yoy', unit:'%', impact:'inflation' },
+    { id:'LMUNRRTTGBM156S', lbl:'UK Unemployment',cat:'uk',tf:'lvl',unit:'%',impact:'growth' },
+    { id:'AUSCPIALLQINMEI', lbl:'AU CPI',  cat:'au', tf:'yoy', unit:'%', impact:'inflation' },
+    { id:'LRHUTTTTAUM156S', lbl:'AU Unemployment', cat:'au', tf:'lvl', unit:'%', impact:'growth' },
+    { id:'NZLCPIALLQINMEI', lbl:'NZ CPI',  cat:'nz', tf:'yoy', unit:'%', impact:'inflation' },
+    { id:'LRHUTTTTNZQ156S', lbl:'NZ Unemployment', cat:'nz', tf:'lvl', unit:'%', impact:'growth' },
+    { id:'CANCPIALLMINMEI', lbl:'CA CPI',  cat:'ca', tf:'yoy', unit:'%', impact:'inflation' },
+    { id:'LRHUTTTTCAM156S', lbl:'CA Unemployment', cat:'ca', tf:'lvl', unit:'%', impact:'growth' },
+    { id:'CHECPIALLMINMEI', lbl:'CH CPI',  cat:'ch', tf:'yoy', unit:'%', impact:'inflation' },
+    { id:'LRHUTTTTCHM156S', lbl:'CH Unemployment', cat:'ch', tf:'lvl', unit:'%', impact:'growth' },
     // US Growth
     { id:'GDPC1',      lbl:'Real GDP (B$)',  cat:'us', tf:'yoy', unit:'%', impact:'growth' },
     { id:'INDPRO',     lbl:'Industrial Prod.', cat:'us', tf:'yoy', unit:'%', impact:'growth' },
@@ -10715,8 +10726,6 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     { id:'IRLTLT01EZM156N',    lbl:'EZ 10Y Yield', cat:'eu',tf:'lvl',unit:'%',impact:'rates' },
     { id:'CSCICP03EZM665S',    lbl:'EZ Consumer Conf',cat:'eu',tf:'lvl',unit:'',impact:'growth' },
     // UK
-    { id:'GBRCPIALLMINMEI', lbl:'UK CPI',   cat:'uk', tf:'yoy', unit:'%', impact:'inflation' },
-    { id:'LMUNRRTTGBM156S', lbl:'UK Unemployment',cat:'uk',tf:'lvl',unit:'%',impact:'growth' },
     { id:'CLVMNACSCAB1GQUK', lbl:'UK Real GDP',cat:'uk',tf:'yoy',unit:'%',impact:'growth' },
     { id:'IRSTCB01GBM156N', lbl:'BoE Bank Rate',cat:'uk',tf:'lvl',unit:'%',impact:'rates' },
     { id:'IRLTLT01GBM156N', lbl:'UK 10Y Yield',cat:'uk',tf:'lvl',unit:'%',impact:'rates' },
@@ -10731,18 +10740,6 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     { id:'MKTGDPCNA646NWDB', lbl:'CN GDP', cat:'cn', tf:'yoy', unit:'%', impact:'growth' },
     { id:'INTDSRCNM193N', lbl:'PBoC Rate', cat:'cn', tf:'lvl', unit:'%', impact:'rates' },
     { id:'XTEXVA01CNM664S', lbl:'CN Exports',cat:'cn',tf:'yoy',unit:'%', impact:'growth' },
-    // Australien
-    { id:'AUSCPIALLQINMEI', lbl:'AU CPI',  cat:'au', tf:'yoy', unit:'%', impact:'inflation' },
-    { id:'LRHUTTTTAUM156S', lbl:'AU Unemployment', cat:'au', tf:'lvl', unit:'%', impact:'growth' },
-    // Neuseeland
-    { id:'NZLCPIALLQINMEI', lbl:'NZ CPI',  cat:'nz', tf:'yoy', unit:'%', impact:'inflation' },
-    { id:'LRHUTTTTNZQ156S', lbl:'NZ Unemployment', cat:'nz', tf:'lvl', unit:'%', impact:'growth' },
-    // Kanada
-    { id:'CANCPIALLMINMEI', lbl:'CA CPI',  cat:'ca', tf:'yoy', unit:'%', impact:'inflation' },
-    { id:'LRHUTTTTCAM156S', lbl:'CA Unemployment', cat:'ca', tf:'lvl', unit:'%', impact:'growth' },
-    // Schweiz
-    { id:'CHECPIALLMINMEI', lbl:'CH CPI',  cat:'ch', tf:'yoy', unit:'%', impact:'inflation' },
-    { id:'LRHUTTTTCHM156S', lbl:'CH Unemployment', cat:'ch', tf:'lvl', unit:'%', impact:'growth' },
     // Sentiment proxies
     { id:'VIXCLS',     lbl:'VIX',           cat:'sent', tf:'lvl', unit:'', impact:'risk' },
     { id:'OVXCLS',     lbl:'OVX (Oil Vol)', cat:'sent', tf:'lvl', unit:'', impact:'risk' },
