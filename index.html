@@ -6115,15 +6115,15 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
 <!-- ====== SECTION 13D: TOP 10 SWING TRADES ====== -->
 <div class="section">
   <div class="section-head">
-    <h2>13D · <em>Top 10 Trades</em> · Live-Ranking · Bestes Setup First<span class="powers-badge">Composite-Score · Direction-Bias · Tipps</span></h2>
-    <div class="meta">Universum 30 Assets · Refresh 60s</div>
+    <h2>13D · <em>Top Trades</em> · Live-Ranking · Bestes Setup First<span class="powers-badge">Composite-Score · Direction-Bias · Tipps</span></h2>
+    <div class="meta">Universum 48 Assets · alle Klassen inkl. Crypto · Refresh 60s</div>
   </div>
 
   <div id="ttStatBar" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;">
     <div class="tt-stat"><div class="tt-stat-lbl">UNIVERSE</div><div id="ttUniv" class="tt-stat-val">—</div><div class="tt-stat-sub">Scanned Assets</div></div>
     <div class="tt-stat"><div class="tt-stat-lbl">LONG-IDEAS</div><div id="ttLongs" class="tt-stat-val" style="color:#22c55e;">—</div><div class="tt-stat-sub">Bullish Score &gt;0</div></div>
     <div class="tt-stat"><div class="tt-stat-lbl">SHORT-IDEAS</div><div id="ttShorts" class="tt-stat-val" style="color:#ef4444;">—</div><div class="tt-stat-sub">Bearish Score &lt;0</div></div>
-    <div class="tt-stat"><div class="tt-stat-lbl">AVG-CONF</div><div id="ttConf" class="tt-stat-val">—</div><div class="tt-stat-sub">Top-10 Confidence</div></div>
+    <div class="tt-stat"><div class="tt-stat-lbl">AVG-CONF</div><div id="ttConf" class="tt-stat-val">—</div><div id="ttConfSub" class="tt-stat-sub">Top-10 Confidence</div></div>
     <div class="tt-stat"><div class="tt-stat-lbl">UPDATED</div><div id="ttTime" class="tt-stat-val">—</div><div class="tt-stat-sub">Letzter Refresh</div></div>
   </div>
 
@@ -6138,6 +6138,10 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     <button class="tt-fchip" data-cls="eng">Energie</button>
     <button class="tt-fchip" data-cls="agr">Agrar</button>
     <button class="tt-fchip" data-cls="cry">Crypto</button>
+    <span style="width:1px;height:18px;background:var(--line);margin:0 6px;"></span>
+    <button class="tt-fchip tt-nchip active" data-n="10">Top 10</button>
+    <button class="tt-fchip tt-nchip" data-n="20">Top 20</button>
+    <button class="tt-fchip tt-nchip" data-n="999">Alle</button>
   </div>
 
   <div id="ttList" style="display:flex;flex-direction:column;gap:10px;"></div>
@@ -17700,6 +17704,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
 
   let activeDir = 'all';
   let activeCls = null;
+  let ttCount = 10;   // wie viele Top-Setups angezeigt werden (10 / 20 / Alle)
   let lastScored = [];
 
   async function ttScan() {
@@ -18070,7 +18075,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       if (activeCls && t.asset.cls !== activeCls) return false;
       return true;
     });
-    const top = filtered.slice(0, 10);
+    const top = filtered.slice(0, ttCount);
 
     // Bias-Component bar — value clamped -1..+1 → fill from center
     function barFill(v) {
@@ -18226,6 +18231,8 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     document.getElementById('ttLongs').textContent = longs;
     document.getElementById('ttShorts').textContent = shorts;
     document.getElementById('ttConf').textContent = avgConf + '%';
+    const subEl = document.getElementById('ttConfSub');
+    if (subEl) subEl.textContent = (ttCount >= 999 ? 'Confidence (alle ' + top.length + ')' : 'Top-' + ttCount + ' Confidence');
     document.getElementById('ttTime').textContent = new Date().toLocaleTimeString('de-DE',{hour12:false});
   }
 
@@ -18260,6 +18267,10 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
           document.querySelectorAll('#ttFilter .tt-fchip[data-cls]').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
         }
+      } else if (btn.dataset.n) {
+        ttCount = parseInt(btn.dataset.n, 10);
+        document.querySelectorAll('#ttFilter .tt-nchip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
       }
       if (lastScored.length) renderTrades(lastScored);
     });
