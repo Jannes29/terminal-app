@@ -16097,6 +16097,24 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     return clamp(r / Math.max(n, 5), -1, 1);
   }
 
+  // ── Risk-Regime-Glättung ──
+  // Zeitgewichteter EMA über den Roh-Regimewert, damit Risk-On/Off nicht bei jedem 60s-Refresh
+  // kippt (besonders nahe der ±0.15-Schwelle). τ=24h → ein echter Regimewechsel kommt über ~1–2 Tage
+  // voll durch, kurzfristiges Rauschen wird gefiltert. Persistiert in localStorage.
+  function smoothRegime(raw){
+    if (typeof raw !== 'number' || isNaN(raw)) return raw;
+    const TAU_MS = 24*3600*1000;
+    const now = Date.now();
+    let prev = window.__REG_SMOOTH;
+    if (!prev) { try { const p = JSON.parse(localStorage.getItem('regime_smooth_v1')||'null'); if (p && typeof p.v === 'number') prev = p; } catch(e){} }
+    let out;
+    if (!prev || typeof prev.v !== 'number') { out = raw; }
+    else { const dt = Math.max(0, now - (prev.t || now)); const alpha = 1 - Math.exp(-dt / TAU_MS); out = prev.v + alpha * (raw - prev.v); }
+    window.__REG_SMOOTH = { v: out, t: now };
+    try { localStorage.setItem('regime_smooth_v1', JSON.stringify(window.__REG_SMOOTH)); } catch(e){}
+    return out;
+  }
+
   // Per-asset-class macro multiplier — blends fundamentals + regional rate diffs + sentiment
   // Sentiment weight = 0.20 of final score (Tavily-driven), fundamentals = 0.80
   // V2 routing: research-backed factor model takes over when BIAS_ENGINE_VERSION = 'V2' (default).
@@ -17430,7 +17448,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     if (!m) return;
     window.MACRO.raw = m;
     window.MACRO.factors = computeFactors(m);
-    window.MACRO.globalRegime = classifyRegime(window.MACRO.factors);
+    window.MACRO.globalRegime = smoothRegime(classifyRegime(window.MACRO.factors));
     window.MACRO.classScores = computeClassScores(window.MACRO.factors, window.MACRO.globalRegime);
     // Push snapshot to rolling history (last 200 fetches)
     window.MACRO.history.push({
@@ -17459,7 +17477,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
         // Re-compute factors so sentiment integrates
         if (window.MACRO.raw && Object.keys(window.MACRO.raw).length) {
           window.MACRO.factors = computeFactors(window.MACRO.raw);
-          window.MACRO.globalRegime = classifyRegime(window.MACRO.factors);
+          window.MACRO.globalRegime = smoothRegime(classifyRegime(window.MACRO.factors));
           window.MACRO.classScores = computeClassScores(window.MACRO.factors, window.MACRO.globalRegime);
           window.dispatchEvent(new CustomEvent('macroUpdate'));
         }
@@ -17481,7 +17499,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   window.addEventListener('geoUpdate', () => {
     if (!window.MACRO.raw || Object.keys(window.MACRO.raw).length === 0) return;
     window.MACRO.factors = computeFactors(window.MACRO.raw);
-    window.MACRO.globalRegime = classifyRegime(window.MACRO.factors);
+    window.MACRO.globalRegime = smoothRegime(classifyRegime(window.MACRO.factors));
     window.MACRO.classScores = computeClassScores(window.MACRO.factors, window.MACRO.globalRegime);
     window.dispatchEvent(new CustomEvent('macroUpdate'));
   });
