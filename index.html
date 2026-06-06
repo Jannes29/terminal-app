@@ -8246,6 +8246,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   const SEA_INVERT={JPY:1,CHF:1,CAD:1}; // USD/XXX-Paare → Richtung invertieren für Währungsstärke
   const SEA_WORKER='https://kayser-data.mehmedkayser.workers.dev/';
   let SEA=(function(){ try{ const c=JSON.parse(localStorage.getItem('scan_sea_v1')||'null'); if(c&&c.date===new Date().toISOString().slice(0,10)) return c.data; }catch(e){} return null; })();
+  let seaAutoTried=false;
   function seaParse(j){ try{ const r=j.chart.result[0],ts=r.timestamp,q=r.indicators.quote[0]; const adj=(r.indicators.adjclose&&r.indicators.adjclose[0])?r.indicators.adjclose[0].adjclose:null; const o=[]; for(let i=0;i<ts.length;i++){ const c=(adj&&adj[i]!=null)?adj[i]:(q.close?q.close[i]:null); if(c==null||!isFinite(c))continue; o.push({d:new Date(ts[i]*1000),c}); } return o; }catch(e){ return null; } }
   async function seaFetch(sym){ const p2=Math.floor(Date.now()/1000),p1=Math.floor((Date.now()-30*365*86400000)/1000); try{ const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),20000); const r=await fetch(SEA_WORKER+'?symbol='+encodeURIComponent(sym)+'&interval=1d&period1='+p1+'&period2='+p2+'&cb='+Date.now(),{cache:'no-store',signal:ctrl.signal}); clearTimeout(to); if(r.ok){ const j=await r.json(); if(j&&j.chart&&j.chart.result) return seaParse(j); } }catch(e){} return null; }
   function seaDir(s,invert){ if(!s||s.length<300) return null; const now=new Date(),m=now.getMonth(),day=now.getDate(),yN=now.getFullYear(); const rets=[]; for(let y=yN-15;y<=yN-1;y++){ const sT=new Date(y,m,day),eT=new Date(y,m,day); eT.setDate(eT.getDate()+30); let si=s.findIndex(p=>p.d>=sT),ei=-1; for(let i=0;i<s.length;i++){ if(s[i].d<=eT)ei=i; else break; } if(si<0||ei<0||ei<=si)continue; rets.push((s[ei].c-s[si].c)/s[si].c*100); } if(!rets.length) return null; const avg=rets.reduce((x,y)=>x+y,0)/rets.length; const wr=Math.round(rets.filter(x=>x>0).length/rets.length*100); const dd=invert?-avg:avg; return { dir: dd>0?1:-1, avgPct:+dd.toFixed(2), wr }; }
@@ -8314,6 +8315,9 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     document.getElementById('scanTable').innerHTML=h+'</tbody></table>';
     const tradeable=rows.filter(r=>r.verdict.includes('HANDELN')).length;
     status(`${rows.length} Assets gescannt · ${tradeable} mit Verdikt HANDELN · Stand ${new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`,'#22c55e');
+    // Saisonalität automatisch im Hintergrund laden (einmal/Tag), damit Saisonal- & Konsens-Spalte
+    // sich von selbst füllen — kein manueller Klick nötig. Läuft non-blocking, render() folgt am Ende.
+    if(!SEA && !seaBusy && !seaAutoTried){ seaAutoTried=true; setTimeout(()=>{ try{ checkSeasonal(); }catch(e){} }, 1200); }
   }
   document.addEventListener('DOMContentLoaded', ()=>{
     const b=document.getElementById('scanRun'); if(b) b.addEventListener('click', render);
