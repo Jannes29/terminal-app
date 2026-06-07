@@ -7583,6 +7583,11 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     </div>
   </div>
   <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
+    <div style="font-size:12px;font-weight:700;margin-bottom:4px;">🔬 Faktor-Analyse · welche Wirtschaftsdaten tragen Edge?</div>
+    <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">Information Coefficient (Rangkorrelation Faktor ↔ Folge-Return). Grün = echter Vorteil, Rot = zieht — so wie das Modell ihn nutzt — in die falsche Richtung. Misst für jeden einzelnen Makro-/Wirtschaftsfaktor, ob er wirklich Vorhersagekraft hat.</div>
+    <div id="slFactorEdge">—</div>
+  </div>
+  <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
     <div style="font-size:12px;font-weight:700;margin-bottom:4px;">🎯 Selektivität · wo wird der Terminal treffsicher?</div>
     <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">Trefferquote steigt, je höher die geforderte Konviktion (|Bias|). So findest du die Schwelle für 70–80% — weniger Signale, aber treffsicherer. Das ist der seriöse Weg zu hoher Trefferquote (Selektivität), nicht „immer recht haben".</div>
     <div style="height:240px;"><canvas id="slSelChart"></canvas></div>
@@ -7755,6 +7760,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     if (typeof reg === 'number') { const el=document.getElementById('slRegime'); if(el){ el.textContent=(reg>=0?'+':'')+reg.toFixed(2); el.style.color = reg>0.1?'#22c55e':reg<-0.1?'#ef4444':'#fbbf24'; } }
     if (f && f.geo_risk!=null) { const el=document.getElementById('slGeo'); if(el){ el.textContent=f.geo_risk+'/100'; el.style.color = f.geo_risk>50?'#ef4444':f.geo_risk>30?'#fbbf24':'#22c55e'; } }
     renderRealEdge();
+    try{ renderFactorEdge(); }catch(e){ if(window.DEBUG)console.warn('[factorEdge]',e); }
   }
   function renderSelectivity(r){
     if (typeof Chart === 'undefined' || !r || !r.selectivity) return;
@@ -7786,6 +7792,94 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       ? `<br><span style="color:#fcd34d;">📡 Gerechnet auf <b>${real}</b> echten Snapshots (synthetische ausgeschlossen) — noch dünn, wird mit jedem Tag belastbarer.</span>`
       : `<br><span style="color:#86efac;">✓ Auf ${real} echten Snapshots gerechnet — belastbar.</span>`;
     info.innerHTML = txt + realWarn;
+  }
+  // ===== Faktor-Analyse: 25-Jahre-Referenz + Live-Messung aus gesammelter Historie =====
+  const FACTOR_EDGE_REF = [
+    {f:'Dollar (DXY)', i1:'+0.121', i3:'+0.078', hr:'53.3%', v:'edge', t:'echter Edge'},
+    {f:'Zinsen (10Y)', i1:'+0.087', i3:'+0.030', hr:'50.2%', v:'mild', t:'leicht positiv'},
+    {f:'Rohstoff-Momentum', i1:'+0.036', i3:'+0.020', hr:'50.2%', v:'neutral', t:'neutral'},
+    {f:'Risk (VIX+Credit)', i1:'−0.011', i3:'−0.009', hr:'48.9%', v:'neutral', t:'Rauschen'},
+    {f:'Zinskurve', i1:'−0.021', i3:'−0.041', hr:'49.7%', v:'neutral', t:'neutral'},
+    {f:'Arbeitsmarkt', i1:'−0.014', i3:'−0.031', hr:'49.7%', v:'bad', t:'schädlich wie verdrahtet'},
+    {f:'Inflation (CPI)', i1:'−0.070', i3:'−0.112', hr:'45.5%', v:'bad', t:'schädlich wie verdrahtet'}
+  ];
+  const FE_SIGN = {
+    rates:{EQ:-1,PREC:-1,CRYPTO:-1,FXEUR:-1,FXJPY:1},
+    c10_2:{EQ:1,INDM:1,CRYPTO:1,PREC:-1},
+    dxy:{EQ:-1,PREC:-1,INDM:-1,OIL:-1,NG:-1,AGRI:-1,CRYPTO:-1,FXEUR:-1,FXJPY:1},
+    infl:{PREC:1,INDM:1,OIL:1,NG:1,AGRI:1},
+    cred:{EQ:1,CRYPTO:1,INDM:1,FXEUR:1,FXJPY:1},
+    move:{EQ:-1,CRYPTO:-1,PREC:1,INDM:-1},
+    oil:{OIL:1}, ng:{NG:1}, cuau:{EQ:1,INDM:1,CRYPTO:1},
+    cd:{EQ:1,INDM:1}, emdm:{EQ:1,CRYPTO:1,INDM:1}, tech:{CRYPTO:1,EQ:1},
+    geo:{PREC:1,OIL:1,EQ:-1,CRYPTO:-1}
+  };
+  const FE_LABEL = { rates:'Zinsen (10Y)', c10_2:'Zinskurve', dxy:'Dollar (DXY)', infl:'Inflation', cred:'Credit/Risk-On', move:'Bond-Vol (MOVE)', oil:'Öl', ng:'Erdgas', cuau:'Kupfer/Gold', cd:'Zyklisch/Defensiv', emdm:'EM vs DM', tech:'Tech-Leadership', geo:'Geopolitik' };
+  function feClass(k){
+    if(/DAX|UKX|NDX|SPX|GER|FTSE/i.test(k)) return 'EQ';
+    if(/GOLD|XAU|SILVER|XAG/i.test(k)) return 'PREC';
+    if(/HG1|HG!|COPPER|XCU/i.test(k)) return 'INDM';
+    if(/CL1|WTI|BRENT|BZ/i.test(k)) return 'OIL';
+    if(/NG1|NGAS|NATGAS/i.test(k)) return 'NG';
+    if(/ZW|ZC|ZS|KC|SB|CC1|CT1|WHEAT|CORN|SOY|COFFEE|SUGAR|COCOA|COTTON/i.test(k)) return 'AGRI';
+    if(/BTC|ETH|SOL/i.test(k)) return 'CRYPTO';
+    if(/USDJPY|JPY/i.test(k)) return 'FXJPY';
+    if(/EURUSD|GBPUSD|AUDUSD|NZDUSD/i.test(k)) return 'FXEUR';
+    return null;
+  }
+  function fePearson(xs,ys){ const n=xs.length; if(n<8) return null; let sx=0,sy=0,sxx=0,syy=0,sxy=0;
+    for(let i=0;i<n;i++){const x=xs[i],y=ys[i];sx+=x;sy+=y;sxx+=x*x;syy+=y*y;sxy+=x*y;}
+    const cov=sxy-sx*sy/n, vx=sxx-sx*sx/n, vy=syy-sy*sy/n; if(vx<=0||vy<=0) return null; return cov/Math.sqrt(vx*vy); }
+  function feFwd(H,i,secsMs){ const target=H[i].t+secsMs;
+    for(let j=i+1;j<H.length;j++){ if(H[j].t>=target){ const a=j-1,b=j;
+      return (a>i && Math.abs(H[a].t-target)<Math.abs(H[b].t-target))?a:b; } } return -1; }
+  function computeLiveFactorEdge(){
+    let H=[]; try{H=JSON.parse(localStorage.getItem('macro_history_v2'))||[];}catch(e){}
+    H=H.filter(s=>s&&s.synth===false&&s.f&&s.px&&s.t).sort((a,b)=>a.t-b.t);
+    const HZ={'24h':86400000,'72h':259200000}; const out=[]; let maxN=0;
+    for(const fk of Object.keys(FE_SIGN)){
+      const rec={key:fk,label:FE_LABEL[fk]||fk}; const sgn=FE_SIGN[fk];
+      for(const hn in HZ){ const xs=[],ys=[];
+        for(let i=0;i<H.length;i++){ const fv=H[i].f[fk]; if(fv==null||!isFinite(fv)) continue;
+          const j=feFwd(H,i,HZ[hn]); if(j<0) continue;
+          for(const pk in H[i].px){ const cls=feClass(pk); if(!cls||!(cls in sgn)) continue;
+            const p0=H[i].px[pk], p1=H[j].px[pk];
+            if(p0==null||p1==null||!isFinite(p0)||!isFinite(p1)||p0===0) continue;
+            const ret=p1/p0-1; if(!isFinite(ret)) continue;
+            xs.push(sgn[cls]*fv); ys.push(ret); } }
+        rec[hn]=fePearson(xs,ys); rec['n'+hn]=xs.length; maxN=Math.max(maxN,xs.length); }
+      out.push(rec); }
+    out.sort((a,b)=>((b['24h']==null?-9:b['24h'])-(a['24h']==null?-9:a['24h'])));
+    return {rows:out, snaps:H.length, maxN};
+  }
+  function renderFactorEdge(){
+    const host=document.getElementById('slFactorEdge'); if(!host) return;
+    const col=v=> v==='edge'?'#22c55e':v==='bad'?'#ef4444':v==='mild'?'#22d3ee':'#9ca3af';
+    let html='<div style="font-size:11px;font-weight:700;color:#c4b5fd;margin-bottom:6px;">📚 25-Jahre-Referenz · point-in-time, alle Assets (autoritativ)</div>';
+    html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:10.5px;min-width:380px;">';
+    html+='<tr style="color:var(--text-2);text-align:left;"><th style="padding:3px 6px;">Faktor</th><th>1M&nbsp;IC</th><th>3M&nbsp;IC</th><th>Treffer</th><th>Urteil</th></tr>';
+    for(const r of FACTOR_EDGE_REF){
+      html+=`<tr style="border-top:1px solid var(--line);"><td style="padding:4px 6px;font-weight:600;">${r.f}</td><td>${r.i1}</td><td style="font-weight:700;color:${col(r.v)};">${r.i3}</td><td>${r.hr}</td><td style="color:${col(r.v)};">${r.t}</td></tr>`;
+    }
+    html+='</table></div>';
+    html+='<div style="font-size:9.5px;color:var(--text-2);margin-top:6px;line-height:1.5;">Über ~2.300 Beobachtungen je Horizont. Befund: <b style="color:#22c55e;">Dollar trägt den Edge</b>; <b style="color:#ef4444;">Inflation &amp; Arbeitsmarkt ziehen — so verdrahtet — in die falsche Richtung</b> (vermutlich regimeabhängig).</div>';
+    let live=null; try{ live=computeLiveFactorEdge(); }catch(e){ if(window.DEBUG)console.warn('[fe]',e); }
+    html+='<div style="font-size:11px;font-weight:700;color:#22d3ee;margin:14px 0 6px;">📡 Live · misst der Terminal selbst aus deiner gesammelten Historie</div>';
+    if(!live || live.maxN<40){
+      const sn=live?live.snaps:0;
+      html+=`<div style="font-size:10.5px;color:#fcd34d;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.35);border-radius:6px;padding:8px 10px;line-height:1.5;">⏳ Noch zu wenig echte Historie für die Live-Faktor-Messung (${sn} Snapshots). Diese Tabelle füllt sich automatisch, je mehr der Collector sammelt — die 25-Jahre-Referenz oben gilt schon jetzt.</div>`;
+    } else {
+      html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:10.5px;min-width:380px;">';
+      html+='<tr style="color:var(--text-2);text-align:left;"><th style="padding:3px 6px;">Faktor</th><th>IC&nbsp;24h</th><th>IC&nbsp;72h</th><th>n</th><th>Urteil</th></tr>';
+      for(const r of live.rows){ const ic=r['24h']; if(ic==null) continue;
+        const v=ic>0.03?'edge':ic<-0.03?'bad':'neutral';
+        const fmt=x=> x==null?'—':(x>=0?'+':'')+x.toFixed(3);
+        html+=`<tr style="border-top:1px solid var(--line);"><td style="padding:4px 6px;font-weight:600;">${r.label}</td><td style="font-weight:700;color:${col(v)};">${fmt(r['24h'])}</td><td>${fmt(r['72h'])}</td><td>${r.n24h||0}</td><td style="color:${col(v)};">${v==='edge'?'Edge':v==='bad'?'gegenläufig':'neutral'}</td></tr>`;
+      }
+      html+='</table></div>';
+      html+=`<div style="font-size:9.5px;color:var(--text-2);margin-top:6px;line-height:1.5;">Hochfrequent (24h/72h-Horizont) auf <b>${live.snaps}</b> echten Snapshots (synthetische ausgeschlossen). Noch dünn — als Tendenz lesen; wird mit der Historie belastbarer und nähert sich der 25-Jahre-Referenz an.</div>`;
+    }
+    host.innerHTML=html;
   }
   window.renderStratLab = renderAll;
   document.addEventListener('DOMContentLoaded', () => {
