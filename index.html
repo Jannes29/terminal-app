@@ -7483,14 +7483,23 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       const burnedN = (st.burned || []).length;
       const aggCol = burnedN === keys.length ? '#ef4444' : burnedN > 6 ? '#fbbf24' : '#22c55e';
       let rows = '';
+      const reasons = st.reasons || {};
       keys.forEach((k, i) => {
         const burned = (st.burned || []).includes(i);
         const active = i === st.idx && !burned;
         const used = (u.counts && u.counts[i]) || 0;
         const pct = (used / cap) * 100;
-        const status = burned ? '<span style="color:#ef4444;">🔥 verbraucht</span>'
-                     : active ? '<span style="color:#22c55e;">🟢 aktiv</span>'
-                     : '<span style="color:#9ca3af;">⚪ bereit</span>';
+        const code = reasons[i] || 0;
+        let status;
+        if (used >= cap) status = '<span style="color:#ef4444;">🔥 verbraucht (Cap)</span>';
+        else if (burned) {
+          if (code === 432) status = '<span style="color:#ef4444;">🔥 Guthaben leer</span>';
+          else if (code === 401 || code === 403) status = '<span style="color:#ef4444;">⛔ ungültig</span>';
+          else if (code === 429) status = '<span style="color:#fbbf24;">⏳ Rate-Limit (temporär)</span>';
+          else status = '<span style="color:#fbbf24;">🔁 abgelehnt</span>';
+        }
+        else if (active) status = '<span style="color:#22c55e;">🟢 aktiv</span>';
+        else status = '<span style="color:#9ca3af;">⚪ bereit</span>';
         const barCol = pct > 80 ? '#ef4444' : pct > 50 ? '#fbbf24' : '#22c55e';
         rows += `<tr style="border-top:1px solid rgba(255,255,255,0.05);">
           <td style="padding:5px 8px;font-family:monospace;color:#9ca3af;">#${i+1} ${mask(k)}</td>
@@ -7502,7 +7511,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       const body = `
         <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px;font-size:12px;">
           <div><span style="color:var(--text-2,#9ca3af);">Pool:</span> <b>${keys.length}</b> Keys</div>
-          <div><span style="color:var(--text-2,#9ca3af);">Verbraucht:</span> <b style="color:${aggCol};">${burnedN}/${keys.length}</b></div>
+          <div><span style="color:var(--text-2,#9ca3af);">Gesperrt:</span> <b style="color:${aggCol};">${burnedN}/${keys.length}</b></div>
           <div><span style="color:var(--text-2,#9ca3af);">Zyklus ab:</span> <b>${u.month}</b></div>
           <div><span style="color:var(--text-2,#9ca3af);">Reset:</span> <b>in ${daysToReset()} Tagen</b> (15. des Monats)</div>
         </div>
@@ -7511,7 +7520,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
             <th style="padding:4px 8px;">Key</th><th style="padding:4px 8px;">Status</th><th style="padding:4px 8px;">Verbrauch (Monat)</th><th style="padding:4px 8px;">Auslastung</th>
           </tr></thead><tbody>${rows}</tbody>
         </table>
-        <div style="margin-top:8px;font-size:10px;color:var(--text-2,#9ca3af);">Cap pro Key = ${cap}/Monat (Annahme; via <code>localStorage.tavily_monthly_cap</code> änderbar). „verbraucht" = vom Server abgelehnt (432/429). Badge oben rechts klicken = Reset.</div>`;
+        <div style="margin-top:8px;font-size:10px;color:var(--text-2,#9ca3af);line-height:1.5;">Cap pro Key = ${cap}/Monat (Annahme; via <code>localStorage.tavily_monthly_cap</code> änderbar). Status nach Server-Antwort: <b>🔥 Guthaben leer</b> (432) · <b>⛔ ungültig</b> (401/403) · <b>⏳ Rate-Limit</b> (429, temporär — wird nach ~6h automatisch erneut probiert). Der monatliche Zähler ist nur die Nutzung <i>dieses Browsers</i> — Tavily zählt serverseitig über alle Geräte, daher kann ein Key trotz niedrigem Zähler gesperrt sein. Badge oben rechts klicken = manueller Reset.</div>`;
       html += card('🔍 Tavily AI-Search', 'News-/Sentiment-Anreicherung · monatlicher Reset', body);
     }
 
@@ -15619,7 +15628,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   (function initTavily() {
     try {
       if (!localStorage.getItem(STATE_KEY)) {
-        localStorage.setItem(STATE_KEY, JSON.stringify({ idx: 0, burned: [], lastBurnTs: 0, cycle: curMonth() }));
+        localStorage.setItem(STATE_KEY, JSON.stringify({ idx: 0, burned: [], reasons: {}, lastBurnTs: 0, cycle: curMonth() }));
       }
       // Altlast aufräumen: pessimistischen v1-Zustand entfernen
       localStorage.removeItem('tavily_state_v1');
@@ -15630,12 +15639,12 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       const s = JSON.parse(localStorage.getItem(STATE_KEY)) || {};
       // Quota-Zyklus-Wechsel (15. des Monats) → verbrauchte Keys automatisch wieder freigeben
       if (s.cycle !== curMonth()) {
-        const fresh = { idx: 0, burned: [], lastBurnTs: 0, cycle: curMonth() };
+        const fresh = { idx: 0, burned: [], reasons: {}, lastBurnTs: 0, cycle: curMonth() };
         try { localStorage.setItem(STATE_KEY, JSON.stringify(fresh)); } catch(e) {}
         return fresh;
       }
-      return { idx: s.idx || 0, burned: s.burned || [], lastBurnTs: s.lastBurnTs || 0, cycle: s.cycle };
-    } catch(e) { return { idx: 0, burned: [], lastBurnTs: 0, cycle: curMonth() }; }
+      return { idx: s.idx || 0, burned: s.burned || [], reasons: s.reasons || {}, lastBurnTs: s.lastBurnTs || 0, cycle: s.cycle };
+    } catch(e) { return { idx: 0, burned: [], reasons: {}, lastBurnTs: 0, cycle: curMonth() }; }
   }
   function saveState(st) {
     try { localStorage.setItem(STATE_KEY, JSON.stringify(st)); } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
@@ -15652,6 +15661,8 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   function rotate(reason) {
     const st = loadState();
     if (!st.burned.includes(st.idx)) st.burned.push(st.idx);
+    if (!st.reasons) st.reasons = {};
+    const m = /(\d{3})/.exec(reason || ''); st.reasons[st.idx] = m ? +m[1] : 0;  // HTTP-Code merken (Grund)
     st.idx = (st.idx + 1) % TAVILY_KEYS.length;
     let attempts = 0;
     while (st.burned.includes(st.idx) && attempts < TAVILY_KEYS.length) {
@@ -15661,7 +15672,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     if (st.burned.length === TAVILY_KEYS.length) st.lastBurnTs = Date.now();
     saveState(st);
   }
-  function resetBurned() { saveState({ idx: 0, burned: [], lastBurnTs: 0, cycle: curMonth() }); }
+  function resetBurned() { saveState({ idx: 0, burned: [], reasons: {}, lastBurnTs: 0, cycle: curMonth() }); }
   // --- Verbrauchszähler pro Key (monatlich, localStorage) ---
   const USAGE_KEY = 'tavily_usage_v1';
   const MONTHLY_CAP = (() => { try { return parseInt(localStorage.getItem('tavily_monthly_cap'), 10) || 1000; } catch(e) { return 1000; } })();
