@@ -15701,7 +15701,39 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     u.counts[idx] = (u.counts[idx] || 0) + 1;
     try { localStorage.setItem(USAGE_KEY, JSON.stringify(u)); } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
   }
+  // Server-seitiger Pfad: Keys liegen als Secret im Worker (env.TAVILY_KEYS), nicht im Client.
+  // Aktiv, sobald die Worker-Route ?tavily + das Secret gesetzt sind. Sonst still auf Client-Keys fallback.
+  let _tavilyWorkerOk = null; // null = unbekannt, true/false = gemerkt (kein wiederholter Fehlversuch)
+  async function fetchViaWorker(payload) {
+    if (_tavilyWorkerOk === false) return null;
+    try {
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 12000);
+      const wr = await fetch('https://kayser-data.mehmedkayser.workers.dev/?tavily=1', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: ctrl.signal
+      });
+      clearTimeout(to);
+      if (wr.ok) {
+        const j = await wr.json();
+        if (j && (Array.isArray(j.results) || typeof j.answer === 'string')) { _tavilyWorkerOk = true; return j; }
+      }
+    } catch(e) {}
+    _tavilyWorkerOk = false;  // Route/Secret (noch) nicht da → künftig direkt Client-Keys nutzen
+    return null;
+  }
   async function fetchSearch(query, opts = {}) {
+    const payload = {
+      query: query,
+      search_depth: opts.search_depth || 'basic',
+      max_results: opts.max_results || 5,
+      include_answer: opts.include_answer || false,
+      topic: opts.topic || 'news',
+      days: opts.days || 7,
+      ...(opts.extra || {})
+    };
+    // 1) Bevorzugt server-seitig über den Worker (Keys nicht im öffentlichen Code → nicht scrapebar)
+    const viaWorker = await fetchViaWorker(payload);
+    if (viaWorker) return viaWorker;
+    // 2) Fallback: direkte Client-Keys mit Rotation (bis Worker-Route live ist)
     let st = loadState();
     // Alle Keys verbraucht? Recheck-Fenster (6h) vorbei → alle wieder freigeben und erneut probieren
     // (Quota evtl. erholt / neuer Zyklus). Sonst noch im Sperrfenster → kein Fetch, keine Fehler.
