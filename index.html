@@ -9622,26 +9622,11 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     }
   }
 
-  // ===== Auto-Bootstrap if history too small =====
-  function autoBootstrapIfNeeded() {
-    const hist = (window.MACRO_HISTORY && window.MACRO_HISTORY.load()) || [];
-    if (hist.length >= 50) return false;
-    if (!window.MACRO || !window.MACRO.classScores || Object.keys(window.MACRO.classScores).length === 0) {
-      return false; // macro not ready yet — retry later
-    }
-    autoLog(`⚙️ History ${hist.length} < 50 — auto-bootstrap startet`);
-    const btn = document.getElementById('proBootstrap');
-    if (!btn) return false;
-    // Bypass confirm() — directly invoke bootstrap logic via simulated click w/ flag
-    window.__AUTO_BOOTSTRAP__ = true;
-    // Patch confirm temporarily so bootstrap dialog auto-accepts
-    const origConfirm = window.confirm;
-    window.confirm = () => true;
-    try { btn.click(); } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
-    window.confirm = origConfirm;
-    delete window.__AUTO_BOOTSTRAP__;
-    return true;
-  }
+  // ===== Auto-Bootstrap ABGESCHALTET =====
+  // Früher wurden synthetische Snapshots erzeugt, um die Auswertung zu „füllen". Da die Trefferquote
+  // jetzt NUR auf echten Snapshots rechnet, sind synthetische Daten überflüssig — sie blähten nur den
+  // Speicher auf und lösten „Speicher voll" aus. Daher: keine synthetische Erzeugung mehr.
+  function autoBootstrapIfNeeded() { return false; }
 
   // ===== Main loop tick =====
   const LOOP_INTERVAL = 60 * 1000; // 60s
@@ -9669,8 +9654,11 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       return;
     }
     if (hist.length < 50) {
-      autoBootstrapIfNeeded();
-      setAutoStatus(`🤖 AUTO: Bootstrap läuft (${hist.length}/50)`, '#fbbf24');
+      // Keine synthetische Erzeugung mehr — wir warten auf echte Snapshots. Regime läuft trotzdem.
+      setAutoStatus(`🤖 AUTO: sammelt echte Live-Daten (${hist.length}/50) · Auswertung wächst mit`, '#fbbf24');
+      if (!status.regime || (now - status.regime) > REGIME_INTERVAL) {
+        try { detectRegime(); } catch(e) {}
+      }
       return;
     }
     // Regime — fast, every 10min
@@ -22001,6 +21989,25 @@ tvly-dev-aaaaa-bbbbb"></textarea>
   window.__autoCompact = autoCompact;
   setTimeout(() => autoCompact(true), 3500);          // einmal direkt beim Laden aufräumen
   setInterval(() => autoCompact(false), 10 * 60 * 1000);
+
+  // ===== EINMALIG: synthetische Bootstrap-Snapshots entfernen =====
+  // Die Trefferquote rechnet nur noch auf echten Snapshots → synthetische sind überflüssig und
+  // verursachten nur den „Speicher voll"-Druck. Hier einmal raus, danach bleibt alles rein echt.
+  (function purgeSyntheticOnce() {
+    try {
+      if (localStorage.getItem('synth_purged_v1')) return;
+      const h = JSON.parse(localStorage.getItem('macro_history_v2') || '[]');
+      if (Array.isArray(h) && h.length) {
+        const real = h.filter(s => s && s.synth === false);
+        if (real.length !== h.length) {
+          localStorage.setItem('macro_history_v2', JSON.stringify(real));
+          if (window.DEBUG) console.log('[PURGE] ' + (h.length - real.length) + ' synthetische Snapshots entfernt, ' + real.length + ' echte behalten');
+        }
+      }
+      localStorage.setItem('synth_purged_v1', '1');
+      try { window.dispatchEvent(new CustomEvent('macroUpdate')); } catch(e) {}
+    } catch(e) { if (window.DEBUG) console.warn('[PURGE] fail', e); }
+  })();
 
   // ===== CHANGELOG / "WAS IST NEU" POPUP =====
   const CHANGELOG_VERSION = 'v2-2026-05-16';
