@@ -7685,10 +7685,16 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
         const arr = Object.values(models);
         const accs = arr.map(m => m && (m.acc ?? m.accuracy ?? m.testAcc)).filter(a => typeof a === 'number');
         const avg = accs.length ? (accs.reduce((a,b)=>a+b,0)/accs.length*100) : null;
+        const real = (r.readiness && r.readiness.real) || 0;
+        const mature = real >= 1470;                 // gleiche Schwelle wie Trefferquote
+        const col = mature ? '#86efac' : '#fcd34d';
+        const lbl = mature
+          ? (avg != null ? '✓ Ø Accuracy ' + avg.toFixed(0) + '% · belastbar' : '✓ belastbar')
+          : '⚠ illustrativ — überwiegend auf synthetischen Daten trainiert; reift mit echter Historie';
         mlInfo = `<div style="flex:1;min-width:120px;background:rgba(167,139,250,0.10);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:10px 12px;">
-          <div style="font-size:10px;color:var(--text-2);">🧠 ML-Modelle</div>
+          <div style="font-size:10px;color:var(--text-2);">🧠 ML-Modelle${mature ? '' : ' · illustrativ'}</div>
           <div style="font-size:20px;font-weight:800;color:#c4b5fd;">${arr.length}</div>
-          <div style="font-size:10px;color:var(--text-2);">${avg!=null?'Ø Accuracy '+avg.toFixed(0)+'%':'trainiert'}</div></div>`;
+          <div style="font-size:9px;color:${col};line-height:1.35;">${lbl}</div></div>`;
       }
     } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
     host.innerHTML = tile('30T gesamt', r.total['30']) + tile('60T gesamt', r.total['60']) + tile('90T gesamt', r.total['90']) + mlInfo;
