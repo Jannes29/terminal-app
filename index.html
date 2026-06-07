@@ -4289,7 +4289,7 @@ setTimeout(() => window.renderMacroDashboard(), 800);
 <script>
 (function() {
   const EVT_KEY = 'bias_events_v1';
-  const MAX_EVENTS = 30;
+  const MAX_EVENTS = 10;   // reduziert (war 30) — hält bias_events_v1 klein gegen LocalStorage-Quota
   const MIN_DELTA = 3; // jede Bewegung ≥3 Pkt loggt
   function loadLog() { try { return JSON.parse(localStorage.getItem(EVT_KEY) || '{}'); } catch(e) { return {}; } }
   function saveLog(log) { try { localStorage.setItem(EVT_KEY, JSON.stringify(log)); } catch(e) { if(window.DEBUG)console.warn('[caught]',e); } }
@@ -8229,7 +8229,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     <span><b style="color:#fbbf24;">BEOBACHTEN</b> = Signal da, aber nicht alle Kriterien</span>
     <span><b style="color:#6b7280;">MEIDEN</b> = zu schwach / unsicher / dünne Daten</span>
   </div>
-  <div style="font-size:10px;color:var(--text-2,#9ca3af);margin-bottom:10px;line-height:1.6;">🎯 <b>KONSENS</b> = von wie vielen unabhängigen Quellen (ML-Modell · Saisonalität · Risk-Regime) die Makro-Bias-Richtung bestätigt wird. <b>3/3</b> = volle Confluence → die treffsicherste Teilmenge. Das ist der seriöse Weg zu hoher Trefferquote: nur handeln, wenn mehrere unabhängige Daten dasselbe sagen.<br>📅 <b>Saisonal 30T</b>: ✓ = die 15-Jahre-Saisonalität der nächsten 30 Tage bestätigt die Richtung · ✗ = widerspricht. Klick „Saisonal abgleichen" zum Laden.</div>
+  <div style="font-size:10px;color:var(--text-2,#9ca3af);margin-bottom:10px;line-height:1.6;">🎯 <b>KONSENS</b> = von wie vielen unabhängigen Quellen (ML-Modell · Saisonalität · Risk-Regime) die Makro-Bias-Richtung bestätigt wird. <b>3/3</b> = volle Confluence → die treffsicherste Teilmenge. Der <b>Nenner zeigt die aktuell aktiven Quellen</b>: Saisonalität und Risk-Regime sind sofort aktiv, das <b>ML-Modell zählt erst mit, sobald genug Echt-Historie gesammelt ist</b> (deshalb anfangs 1/1 oder 2/2 statt /3). So handelt man nur, wenn mehrere unabhängige Daten dasselbe sagen.<br>📅 <b>Saisonal 30T</b>: ✓ = die 15-Jahre-Saisonalität der nächsten 30 Tage bestätigt die Richtung · ✗ = widerspricht. Lädt automatisch im Hintergrund.</div>
   <div id="scanTable" style="overflow-x:auto;">—</div>
 </div>
 <script>
@@ -8258,6 +8258,26 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     SEA=data; try{ localStorage.setItem('scan_sea_v1', JSON.stringify({date:new Date().toISOString().slice(0,10),data})); }catch(e){}
     seaBusy=false; render();
   }
+  // Risk-Beta je Asset (für Pair-Regime-Ableitung): +1 = profitiert von Risk-ON, −1 = Hafen
+  const RBETA={AUD:1,NZD:1,CAD:1,NAS100:1,SPX500:1,GER40:1,FTSE:1,XCU:1,WTI:1,BRENT:1,BTC:1,ETH:1,SOL:1,JPY:-1,CHF:-1,USD:-1,XAU:-1};
+  // Alle FX-Cross-Pairs (Major + Crosses) — werden aus den Währungs-Scores abgeleitet
+  const CROSS=['EUR/USD','GBP/USD','AUD/USD','NZD/USD','USD/JPY','USD/CHF','USD/CAD',
+    'EUR/GBP','EUR/JPY','EUR/CHF','EUR/AUD','EUR/NZD','EUR/CAD',
+    'GBP/JPY','GBP/CHF','GBP/AUD','GBP/NZD','GBP/CAD',
+    'AUD/JPY','NZD/JPY','CAD/JPY','CHF/JPY',
+    'AUD/CHF','NZD/CHF','CAD/CHF','AUD/CAD','AUD/NZD','NZD/CAD'];
+  function catOf(id){
+    if(id.indexOf('/')>=0) return 'FX-Cross';
+    if(FX.includes(id)) return 'FX-Einzel';
+    if(['NAS100','SPX500','GER40','FTSE'].includes(id)) return 'Indizes';
+    if(['XAU','XAG','XCU','XPT','XPD'].includes(id)) return 'Metalle';
+    if(['WTI','BRENT','NGAS'].includes(id)) return 'Energie';
+    if(['ZW','ZC','ZS','KC','SB','CC','CT'].includes(id)) return 'Agrar';
+    if(['BTC','ETH','SOL'].includes(id)) return 'Crypto';
+    return 'Sonstige';
+  }
+  const CAT_ORDER=['FX-Einzel','FX-Cross','Indizes','Metalle','Energie','Agrar','Crypto','Sonstige'];
+
   function render(){
     const cs=(window.MACRO&&window.MACRO.classScores)||{};
     const conf=window.BIAS_CONFIDENCE||{};
@@ -8265,58 +8285,84 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     const contrib=window.BIAS_CONTRIBUTIONS||{};
     const reg=(window.MACRO&&window.MACRO.globalRegime)||0;
     const ml=window.MACRO_ML_PRED||{};
-    const keys=Object.keys(cs).filter(a=>cs[a]!=null&&NM[a]);
-    if(!keys.length){ document.getElementById('scanTable').innerHTML='<div style="padding:20px;color:var(--text-2,#9ca3af);font-size:12px;">Engine lädt noch — gleich verfügbar. Klick „Scannen" oder kurz warten.</div>'; return; }
-    const rows=keys.map(a=>{
-      const score=cs[a];
-      const cv=cov[a]?cov[a].pctLive:0;
-      const cf=conf[a]!=null?conf[a]:0.5;
+    if(!Object.keys(cs).filter(a=>cs[a]!=null&&NM[a]).length){ document.getElementById('scanTable').innerHTML='<div style="padding:20px;color:var(--text-2,#9ca3af);font-size:12px;">Engine lädt noch — gleich verfügbar. Klick „Scannen" oder kurz warten.</div>'; return; }
+
+    function entry(id){
+      const isPair=id.indexOf('/')>=0; let score,cv,cf,drv,base,quote;
+      if(isPair){
+        base=id.split('/')[0]; quote=id.split('/')[1];
+        if(cs[base]==null||cs[quote]==null) return null;
+        score=Math.max(-1,Math.min(1,(cs[base]-cs[quote])/2));
+        cv=Math.round(Math.min(cov[base]?cov[base].pctLive:0, cov[quote]?cov[quote].pctLive:0));
+        cf=((conf[base]!=null?conf[base]:0.5)+(conf[quote]!=null?conf[quote]:0.5))/2;
+        const db=(contrib[base]||[])[0], dq=(contrib[quote]||[])[0];
+        drv=base+': '+(db?db.name:'—')+' · '+quote+': '+(dq?dq.name:'—');
+      } else {
+        if(cs[id]==null||!NM[id]) return null;
+        score=cs[id]; cv=cov[id]?cov[id].pctLive:0; cf=conf[id]!=null?conf[id]:0.5;
+        drv=(contrib[id]||[]).slice(0,2).map(d=>d.name).join(', ');
+      }
       let conviction=Math.abs(score)*(cv/100)*(0.5+cf/2);
-      const drv=(contrib[a]||[]).slice(0,2).map(d=>d.name).join(', ');
-      let verdict, vc;
+      const dirBias=score>0?1:-1;
+      let verdict,vc;
       if(Math.abs(score)>=0.25 && cf>=0.5 && cv>=80){ verdict='★ HANDELN'; vc='#22c55e'; }
       else if(Math.abs(score)>=0.20 && cv>=60){ verdict='BEOBACHTEN'; vc='#fbbf24'; }
       else { verdict='MEIDEN'; vc='#6b7280'; }
-      // ── Multi-Quellen-Konsens: Makro-Bias (Anker) + ML-Modell + Saisonalität + Risk-Regime ──
-      const dirBias=score>0?1:-1; const long=score>0;
-      const se=SEA&&SEA[a]; let seaCell='–', seaCol='#6b7280';
-      const seaVote = se? se.dir : 0;
-      if(se){ const sm=seaVote===dirBias; seaCell=(sm?'✓ ':'✗ ')+(se.avgPct>=0?'+':'')+se.avgPct+'%'; seaCol=sm?'#22c55e':'#ef4444'; }
-      const mlp=ml[a]; const mlVote = (mlp&&mlp.dir)? (mlp.dir>0?1:-1) : 0;
-      let regVote=0; if(Math.abs(reg)>=0.15){ if(RISK_ON[a]) regVote=reg>0?1:-1; else if(RISK_OFF[a]) regVote=reg>0?-1:1; }
+      // Saisonalität (für Pairs aus den beiden Währungs-Beinen abgeleitet)
+      let seaCell='–',seaCol='#6b7280',seaVote=0;
+      if(SEA){
+        if(isPair){ const sb=SEA[base],sq=SEA[quote]; if(sb&&sq){ const pct=+(sb.avgPct-sq.avgPct).toFixed(2); seaVote=pct>0?1:-1; const sm=seaVote===dirBias; seaCell=(sm?'✓ ':'✗ ')+(pct>=0?'+':'')+pct+'%'; seaCol=sm?'#22c55e':'#ef4444'; } }
+        else { const se=SEA[id]; if(se){ seaVote=se.dir; const sm=seaVote===dirBias; seaCell=(sm?'✓ ':'✗ ')+(se.avgPct>=0?'+':'')+se.avgPct+'%'; seaCol=sm?'#22c55e':'#ef4444'; } }
+      }
+      // ML-Vote
+      let mlVote=0;
+      if(isPair){ const d=(((ml[base]&&ml[base].dir)||0))-(((ml[quote]&&ml[quote].dir)||0)); mlVote=d>0?1:d<0?-1:0; }
+      else { const mlp=ml[id]; mlVote=(mlp&&mlp.dir)?(mlp.dir>0?1:-1):0; }
+      // Regime-Vote: stimmt jetzt IMMER per Vorzeichen mit (sofern Risk-Beta vorhanden)
+      let regVote=0;
+      if(reg!==0){ const beta = isPair ? ((RBETA[base]||0)-(RBETA[quote]||0)) : (RBETA[id]||0); if(beta!==0) regVote=(reg*beta)>0?1:-1; }
       const votes=[mlVote,seaVote,regVote].filter(v=>v!==0);
       const agree=votes.filter(v=>v===dirBias).length, total=votes.length;
-      const konsCell = total? (agree+'/'+total) : '–';
-      const konsCol = total? (agree===total?'#22d3ee':agree>total/2?'#22c55e':agree===0?'#ef4444':'#fbbf24') : '#6b7280';
-      if(total) conviction *= 0.6 + 0.8*(agree/total); // Confluence verstärkt/dämpft Konviktion
+      const konsCell=total?(agree+'/'+total):'–';
+      const konsCol=total?(agree===total?'#22d3ee':agree>total/2?'#22c55e':agree===0?'#ef4444':'#fbbf24'):'#6b7280';
+      if(total) conviction *= 0.6 + 0.8*(agree/total);
       if(verdict.indexOf('HANDELN')>=0 && total>=2 && agree===total){ verdict='★★ TOP'; vc='#22d3ee'; }
-      return {a,score,cv,cf,conviction,drv,verdict,vc,seaCell,seaCol,konsCell,konsCol};
-    }).sort((x,y)=>y.conviction-x.conviction);
-    const isFX=a=>FX.includes(a);
+      return {id,name:(isPair?id:NM[id]),cat:catOf(id),score,cv,cf,conviction,drv,verdict,vc,seaCell,seaCol,konsCell,konsCol};
+    }
+
+    const ids=Object.keys(cs).filter(a=>cs[a]!=null&&NM[a]).concat(CROSS);
+    const all=ids.map(entry).filter(Boolean);
+    const byCat={}; all.forEach(e=>{ (byCat[e.cat]=byCat[e.cat]||[]).push(e); });
+    Object.keys(byCat).forEach(c=>byCat[c].sort((x,y)=>y.conviction-x.conviction));
+
     let h='<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="color:var(--text-2,#9ca3af);text-align:left;font-size:9.5px;letter-spacing:0.5px;">'+
       '<th style="padding:5px 6px;">ASSET</th><th>RICHTUNG</th><th style="text-align:right;">BIAS 30T</th><th style="text-align:right;">KONFIDENZ</th><th style="text-align:right;">DATEN</th><th>HAUPTTREIBER</th><th style="text-align:right;">SAISONAL 30T</th><th style="text-align:center;">KONSENS</th><th style="text-align:center;">VERDIKT</th></tr></thead><tbody>';
-    rows.forEach(r=>{
-      const long=r.score>0;
-      const dirTxt = isFX(r.a) ? (long?'LONG · stark':'SHORT · schwach') : (long?'LONG':'SHORT');
-      const dirCol = long?'#22c55e':'#ef4444';
-      const cfCol = r.cf>=0.6?'#22c55e':r.cf>=0.45?'#fbbf24':'#ef4444';
-      const cvCol = r.cv>=80?'#22c55e':r.cv>=60?'#fbbf24':'#6b7280';
-      h+=`<tr style="border-top:1px solid rgba(255,255,255,0.05);">
-        <td style="padding:5px 6px;font-weight:700;">${NM[r.a]}</td>
-        <td style="color:${dirCol};font-weight:600;">${dirTxt}</td>
-        <td style="text-align:right;font-variant-numeric:tabular-nums;color:${dirCol};">${bias30(r.score)}%</td>
-        <td style="text-align:right;color:${cfCol};">${r.cf.toFixed(2)}</td>
-        <td style="text-align:right;color:${cvCol};">${r.cv}%</td>
-        <td style="color:var(--text-2,#9ca3af);font-size:10px;">${r.drv||'—'}</td>
-        <td style="text-align:right;color:${r.seaCol};font-size:10px;">${r.seaCell}</td>
-        <td style="text-align:center;color:${r.konsCol};font-weight:700;font-size:10px;">${r.konsCell}</td>
-        <td style="text-align:center;"><span style="color:${r.vc};font-weight:700;font-size:10px;">${r.verdict}</span></td></tr>`;
+    let count=0;
+    CAT_ORDER.forEach(cat=>{
+      const arr=byCat[cat]; if(!arr||!arr.length) return;
+      h+=`<tr><td colspan="9" style="padding:10px 6px 4px;font-size:10px;font-weight:800;letter-spacing:1.2px;color:#22d3ee;border-top:2px solid rgba(34,211,238,0.22);">${cat.toUpperCase()} · ${arr.length}</td></tr>`;
+      arr.forEach(r=>{
+        count++;
+        const long=r.score>0;
+        const dirTxt=long?'LONG':'SHORT';
+        const dirCol=long?'#22c55e':'#ef4444';
+        const cfCol=r.cf>=0.6?'#22c55e':r.cf>=0.45?'#fbbf24':'#ef4444';
+        const cvCol=r.cv>=80?'#22c55e':r.cv>=60?'#fbbf24':'#6b7280';
+        h+=`<tr style="border-top:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:5px 6px;font-weight:700;">${r.name}</td>
+          <td style="color:${dirCol};font-weight:600;">${dirTxt}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;color:${dirCol};">${bias30(r.score)}%</td>
+          <td style="text-align:right;color:${cfCol};">${r.cf.toFixed(2)}</td>
+          <td style="text-align:right;color:${cvCol};">${r.cv}%</td>
+          <td style="color:var(--text-2,#9ca3af);font-size:10px;">${r.drv||'—'}</td>
+          <td style="text-align:right;color:${r.seaCol};font-size:10px;">${r.seaCell}</td>
+          <td style="text-align:center;color:${r.konsCol};font-weight:700;font-size:10px;">${r.konsCell}</td>
+          <td style="text-align:center;"><span style="color:${r.vc};font-weight:700;font-size:10px;">${r.verdict}</span></td></tr>`;
+      });
     });
     document.getElementById('scanTable').innerHTML=h+'</tbody></table>';
-    const tradeable=rows.filter(r=>r.verdict.includes('HANDELN')).length;
-    status(`${rows.length} Assets gescannt · ${tradeable} mit Verdikt HANDELN · Stand ${new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`,'#22c55e');
-    // Saisonalität automatisch im Hintergrund laden (einmal/Tag), damit Saisonal- & Konsens-Spalte
-    // sich von selbst füllen — kein manueller Klick nötig. Läuft non-blocking, render() folgt am Ende.
+    const tradeable=all.filter(r=>r.verdict.includes('HANDELN')).length;
+    status(`${count} Assets inkl. Cross-Pairs gescannt · ${tradeable} mit Verdikt HANDELN · Stand ${new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`,'#22c55e');
     if(!SEA && !seaBusy && !seaAutoTried){ seaAutoTried=true; setTimeout(()=>{ try{ checkSeasonal(); }catch(e){} }, 1200); }
   }
   document.addEventListener('DOMContentLoaded', ()=>{
@@ -9383,7 +9429,16 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       alert(`Bootstrap erfolgreich: ${synth.length} synthetische Snapshots erzeugt. Historie jetzt: ${merged.length} Records. Optimizer/ML/Calibration sind jetzt sofort lauffähig.`);
       window.dispatchEvent(new CustomEvent('historyUpdate'));
     } catch(e) {
-      alert('Bootstrap-Fehler: ' + e.message + ' (LocalStorage Quota?)');
+      // Quota voll → automatisch aufräumen und einmal erneut versuchen
+      try {
+        if (window.__autoCompact) window.__autoCompact(true);
+        localStorage.setItem(HIST_KEY, JSON.stringify(merged));
+        window.dispatchEvent(new CustomEvent('historyUpdate'));
+        if (window.showToast) window.showToast('Speicher war voll — automatisch bereinigt, Bootstrap erfolgreich.');
+      } catch(e2) {
+        if (window.showToast) window.showToast('Speicher voll. Ältere Daten wurden bereinigt — bitte erneut „Bootstrap" klicken.');
+        else console.warn('[Bootstrap] Quota:', e2.message);
+      }
     }
   });
   document.getElementById('proExportHist').addEventListener('click', () => {
@@ -21824,23 +21879,25 @@ tvly-dev-aaaaa-bbbbb"></textarea>
   setTimeout(updatePerfMon, 1000);
   setInterval(updatePerfMon, 5000);
 
-  // ===== AUTO-COMPACT LOCALSTORAGE WHEN ABOVE 4MB =====
-  function autoCompact() {
+  // ===== AUTO-COMPACT LOCALSTORAGE — verhindert Quota-Überlauf (~10MB Browser-Limit) =====
+  // Kürzt die drei größten Verbraucher: Snapshot-Historie, Bias-Events, Tages-Bias.
+  function autoCompact(force) {
     let total = 0;
-    try { for (const k of Object.keys(localStorage)) total += (localStorage[k] || '').length; } catch(e) { return; }
-    if (total < 4 * 1024 * 1024) return;
-    console.warn('[AutoCompact] localStorage >4MB, trimming history…');
+    try { for (const k of Object.keys(localStorage)) total += ((localStorage[k] || '').length + k.length); } catch(e) { return; }
+    if (!force && total < 3 * 1024 * 1024) return;   // ~3M UTF-16-Zeichen ≈ 6MB belegt
     try {
-      const hist = JSON.parse(localStorage.getItem('macro_history_v2')) || [];
-      if (hist.length > 2000) {
-        // Keep last 2000 snapshots
-        hist.splice(0, hist.length - 2000);
-        localStorage.setItem('macro_history_v2', JSON.stringify(hist));
-        console.warn('[AutoCompact] history trimmed to 2000');
-      }
-    } catch(e) { console.warn('[AutoCompact] fail:', e); }
+      // 1) Snapshot-Historie auf 1500 jüngste kürzen
+      try { let h = JSON.parse(localStorage.getItem('macro_history_v2') || '[]'); if (Array.isArray(h) && h.length > 1500) { localStorage.setItem('macro_history_v2', JSON.stringify(h.slice(-1500))); } } catch(e){}
+      // 2) Bias-Events: pro Asset max 8 Einträge
+      try { const log = JSON.parse(localStorage.getItem('bias_events_v1') || '{}'); let ch = false; for (const a in log) { if (log[a] && Array.isArray(log[a].events) && log[a].events.length > 8) { log[a].events = log[a].events.slice(0, 8); ch = true; } } if (ch) localStorage.setItem('bias_events_v1', JSON.stringify(log)); } catch(e){}
+      // 3) Tages-Bias: pro Asset nur die letzten 120 Tage
+      try { const d = JSON.parse(localStorage.getItem('bias_daily_v1') || '{}'); let ch = false; for (const a in d) { const days = Object.keys(d[a] || {}).sort(); if (days.length > 120) { days.slice(0, days.length - 120).forEach(k => delete d[a][k]); ch = true; } } if (ch) localStorage.setItem('bias_daily_v1', JSON.stringify(d)); } catch(e){}
+      if (window.DEBUG) console.warn('[AutoCompact] localStorage bereinigt');
+    } catch(e) { if (window.DEBUG) console.warn('[AutoCompact] fail:', e); }
   }
-  setInterval(autoCompact, 30 * 60 * 1000);
+  window.__autoCompact = autoCompact;
+  setTimeout(() => autoCompact(true), 3500);          // einmal direkt beim Laden aufräumen
+  setInterval(() => autoCompact(false), 10 * 60 * 1000);
 
   // ===== CHANGELOG / "WAS IST NEU" POPUP =====
   const CHANGELOG_VERSION = 'v2-2026-05-16';
