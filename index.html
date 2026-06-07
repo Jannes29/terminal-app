@@ -7574,9 +7574,12 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       <div style="font-size:10px;color:var(--text-2);margin-top:6px;">Anteil korrekter Richtungs-Vorhersagen vs. tatsächlicher Vorwärts-Return. 50% = Zufall.</div>
     </div>
     <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;">
-      <div style="font-size:12px;font-weight:700;margin-bottom:10px;">🌐 Makro-/Geo-Faktoren · aktuelle Treiber der Strategie</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <div style="font-size:12px;font-weight:700;">🌐 Makro-/Geo-Faktoren · Top-Treiber heute</div>
+        <div id="slFactorScope" style="font-size:9.5px;font-weight:700;letter-spacing:0.3px;color:#22d3ee;background:rgba(34,211,238,0.10);border:1px solid rgba(34,211,238,0.3);border-radius:5px;padding:2px 8px;">Gesamtmodell lädt…</div>
+      </div>
       <div style="height:240px;"><canvas id="slFactorChart"></canvas></div>
-      <div style="font-size:10px;color:var(--text-2);margin-top:6px;">Live-Inputs der Bias-Engine. Grün = bullisch-treibend, Rot = bärisch.</div>
+      <div style="font-size:10px;color:var(--text-2);margin-top:6px;line-height:1.5;">Gezeigt ist ein <b>repräsentativer Querschnitt</b> der wichtigsten Live-Treiber — das Gesamtmodell wertet deutlich mehr aus (Zinsen · Inflation · Arbeitsmarkt · Wachstum · Geldmenge · Kredit · Positionierung · Geopolitik · Rohstoffe · Risk-Regime). Grün = bullisch-treibend, Rot = bärisch.</div>
     </div>
   </div>
   <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
@@ -7653,6 +7656,14 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   function renderFactorChart(f){
     if (typeof Chart === 'undefined' || !f) return;
     const keys = Object.keys(FACTOR_LABELS).filter(k => f[k] != null && isFinite(f[k]));
+    // Breiten-Badge: echte Gesamtzahl an Faktoren/Assets aus dem Modell (zeigt, dass es weit mehr als der Chart ist)
+    try {
+      const AD = window.ASSET_DRIVERS || {};
+      const assetN = Object.keys(AD).length;
+      const facN = new Set(); Object.values(AD).forEach(arr => (arr||[]).forEach(d => facN.add(d.name)));
+      const scopeEl = document.getElementById('slFactorScope');
+      if (scopeEl && facN.size) scopeEl.textContent = facN.size + ' Faktoren · ' + assetN + ' Assets · ' + keys.length + ' im Chart';
+    } catch(e) {}
     const labels = keys.map(k => FACTOR_LABELS[k]);
     const vals = keys.map(k => +(+f[k]).toFixed(2));
     const colors = vals.map(v => v >= 0 ? '#22c55e' : '#ef4444');
