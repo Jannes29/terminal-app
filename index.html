@@ -7583,11 +7583,6 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     </div>
   </div>
   <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
-    <div style="font-size:12px;font-weight:700;margin-bottom:4px;">🔬 Faktor-Analyse · welche Wirtschaftsdaten tragen Edge?</div>
-    <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">Information Coefficient (Rangkorrelation Faktor ↔ Folge-Return). Grün = echter Vorteil, Rot = zieht — so wie das Modell ihn nutzt — in die falsche Richtung. Misst für jeden einzelnen Makro-/Wirtschaftsfaktor, ob er wirklich Vorhersagekraft hat.</div>
-    <div id="slFactorEdge">—</div>
-  </div>
-  <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
     <div style="font-size:12px;font-weight:700;margin-bottom:10px;">🎯 Gesamt-Trefferquote &amp; ML-Modell</div>
     <div id="slStats" style="display:flex;gap:14px;flex-wrap:wrap;">—</div>
   </div>
@@ -7760,7 +7755,6 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     if (typeof reg === 'number') { const el=document.getElementById('slRegime'); if(el){ el.textContent=(reg>=0?'+':'')+reg.toFixed(2); el.style.color = reg>0.1?'#22c55e':reg<-0.1?'#ef4444':'#fbbf24'; } }
     if (f && f.geo_risk!=null) { const el=document.getElementById('slGeo'); if(el){ el.textContent=f.geo_risk+'/100'; el.style.color = f.geo_risk>50?'#ef4444':f.geo_risk>30?'#fbbf24':'#22c55e'; } }
     renderRealEdge();
-    try{ renderFactorEdge(); }catch(e){ if(window.DEBUG)console.warn('[factorEdge]',e); }
   }
   function renderSelectivity(r){
     if (typeof Chart === 'undefined' || !r || !r.selectivity) return;
