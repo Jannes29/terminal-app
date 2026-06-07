@@ -7596,7 +7596,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   </div>
   <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
     <div style="font-size:12px;font-weight:700;margin-bottom:4px;">🎯 Swing-Trefferquote (25-Jahre-Backtest) &amp; ML-Modell</div>
-    <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">Bias-Richtung trifft <b>bis zum jeweiligen Horizont</b> (zumindest zeitweise in die richtige Richtung gelaufen) — die Kennzahl für dich als Richtungs-Filter mit eigenem Timing. 90T ≈ <b>~70%</b>.</div>
+    <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">Bias-Richtung trifft <b>bis zum jeweiligen Horizont</b> — gemessen auf dem <b>Kern-Universum</b> (handelbare Einzel-Assets + USD-Majors, ohne synthetische Cross-Konstrukte), 25 Jahre, <b>out-of-sample bestätigt</b> (Train 2000–2015 / Test 2016–2026: 30T 54,4% · 60T 63,2% · 90T 67,8%). FX-Majors auf 30T sogar ~60%.</div>
     <div id="slStats" style="display:flex;gap:14px;flex-wrap:wrap;">—</div>
   </div>
   <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
@@ -7620,7 +7620,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   // Wochenend-/Live-Daten-unabhängig. w=Treffer, n=Beobachtungen je Horizont (30T≈1M,60T≈2M,90T≈3M).
   const BACKTEST_WR={byCat:{'FX':{'30':{w:700,n:1390},'60':{w:711,n:1363},'90':{w:684,n:1336}},'INDEX':{'30':{w:19,n:33},'60':{w:18,n:32},'90':{w:16,n:31}},'METAL':{'30':{w:103,n:208},'60':{w:106,n:205},'90':{w:101,n:202}},'ENERGY':{'30':{w:101,n:196},'60':{w:106,n:193},'90':{w:97,n:189}},'AGRI':{'30':{w:238,n:483},'60':{w:239,n:475},'90':{w:236,n:469}},'CRYPTO':{'30':{w:31,n:63},'60':{w:32,n:61},'90':{w:24,n:59}}},total:{'30':{w:1192,n:2373},'60':{w:1212,n:2329},'90':{w:1158,n:2286}}};
   // Swing-Definition (Option C): Bias-Richtung trifft BIS zum jeweiligen Horizont (25J, gepoolt).
-  const SWING_TOTAL={'30':{w:1115,n:2233},'60':{w:1399,n:2233},'90':{w:1521,n:2233}};
+  const SWING_TOTAL={'30':{w:705,n:1266},'60':{w:773,n:1169},'90':{w:653,n:942}};
   const FACTOR_LABELS = {
     rates_trend:'US 10Y-Trend', curve_10_2:'Zinskurve 10–2', dxy_trend_1m:'DXY 1M',
     credit_risk_on:'Credit Risk-On', move_trend:'MOVE (Bond-Vol)', copper_gold_trend:'Kupfer/Gold',
@@ -7891,7 +7891,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   }
   // ===== Richtungs-Sicherheit 0–100 pro Asset (kalibriert an 25J, PRO HORIZONT) =====
   // Richtung trifft BIS zum jeweiligen Horizont (30T≈1M, 60T≈2M, 90T≈3M).
-  const SWING_H = {'FX':{'30':50,'60':63,'90':68},'INDEX':{'30':51,'60':62,'90':67},'METAL':{'30':50,'60':64,'90':69},'ENERGY':{'30':51,'60':63,'90':67},'AGRI':{'30':49,'60':61,'90':69},'CRYPTO':{'30':53,'60':61,'90':61}};
+  const SWING_H = {'FX':{'30':60,'60':73,'90':73},'INDEX':{'30':56,'60':66,'90':69},'METAL':{'30':56,'60':63,'90':61},'ENERGY':{'30':50,'60':55,'90':62},'AGRI':{'30':54,'60':66,'90':72},'CRYPTO':{'30':52,'60':57,'90':67}};
   let dcHorizon = '90';
   window.__dcSetHz = function(h){ dcHorizon = h; try{ renderDirConfidence(); }catch(e){} };
   function dcCat(a){
