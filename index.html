@@ -7708,7 +7708,11 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
           <div style="font-size:9px;color:${col};line-height:1.35;">${lbl}</div></div>`;
       }
     } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
-    host.innerHTML = tile('30T (Backtest)', BACKTEST_WR.total['30']) + tile('60T (Backtest)', BACKTEST_WR.total['60']) + tile('90T (Backtest)', BACKTEST_WR.total['90']) + mlInfo;
+    const lv = h => { const s = r.total && r.total[h]; const p = wrPct(s); return (p==null)?'—':p.toFixed(1)+'%'; };
+    const lvN = (r.readiness && r.readiness.real) || 0;
+    const lvEta = r.readiness ? r.readiness.eta90 : null;
+    const liveHtml = `<div style="flex-basis:100%;margin-top:8px;font-size:10.5px;color:#a5f3fc;background:rgba(34,211,238,0.06);border:1px solid rgba(34,211,238,0.25);border-radius:8px;padding:9px 12px;line-height:1.55;">🛰 <b>Live-Validierung der vollen 175-Faktor-Bias</b> (echte Snapshots aus dem 24/7-Collector, reift mit der Laufzeit): 30T <b>${lv('30')}</b> · 60T <b>${lv('60')}</b> · 90T <b>${lv('90')}</b> &nbsp;|&nbsp; ${lvN} echte Snapshots${lvEta!=null?` · 90T verlässlich in ~${lvEta} Tagen`:''}.<br><span style="opacity:0.82;">Testet wirklich ALLE 175 Faktoren (inkl. Geopolitik/Positionierung) — noch statistisch dünn, wird mit der Zeit belastbar. Die Backtest-Kacheln oben sind der robuste Makro-Kern-Anker.</span></div>`;
+    host.innerHTML = tile('30T (Backtest)', BACKTEST_WR.total['30']) + tile('60T (Backtest)', BACKTEST_WR.total['60']) + tile('90T (Backtest)', BACKTEST_WR.total['90']) + mlInfo + liveHtml;
   }
   function renderRealEdge(){
     const host = document.getElementById('slRealEdge'); if (!host) return;
@@ -8545,6 +8549,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   }
   if(document.readyState!=='loading') setTimeout(importHistory,3000);
   else document.addEventListener('DOMContentLoaded', ()=>setTimeout(importHistory,3000));
+  setInterval(importHistory, 5*60*1000);   // alle 5 Min weiter nachladen → Live-Validierung wächst ohne Reload
 })();
 </script>
 
