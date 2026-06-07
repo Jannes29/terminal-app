@@ -2,22 +2,22 @@ name: Macro Snapshot Collector
 
 on:
   schedule:
-    - cron: '*/20 * * * *'
-  workflow_dispatch: {}
+    - cron: '*/30 * * * *'     # alle 30 Min ein neuer Lauf — fängt GitHubs verzögerte/ausgelassene Crons ab
+  workflow_dispatch: {}        # manuell auslösbar
 
 permissions:
   contents: write
 
 concurrency:
   group: collector
-  cancel-in-progress: false
+  cancel-in-progress: false    # laufenden Lauf NIE abbrechen; ein neuer wartet in der Queue → quasi durchgehend
 
 jobs:
   collect:
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.44.0-jammy
-    timeout-minutes: 8
+    timeout-minutes: 70
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,19 +25,24 @@ jobs:
       - name: Install deps
         run: npm install
 
-      - name: Snapshot sammeln
-        run: node collect.js
-
-      - name: Commit & Push
+      - name: Setup git
         run: |
           git config --global --add safe.directory '*'
           git config user.name "snapshot-bot"
           git config user.email "snapshot-bot@users.noreply.github.com"
-          git add history.json
-          if git diff --staged --quiet; then
-            echo "Kein neuer Snapshot zum Committen."
-          else
-            git commit -m "snapshot $(date -u +%FT%TZ)"
-            git pull --rebase --autostash || true
-            git push
-          fi
+
+      - name: Snapshots im 5-Min-Takt sammeln (langer Lauf statt 1x pro Cron)
+        run: |
+          for i in $(seq 1 9); do
+            echo "=== Snapshot $i/9 ==="
+            node collect.js || echo "Snapshot $i fehlgeschlagen — weiter"
+            git add history.json
+            if git diff --staged --quiet; then
+              echo "Kein neuer Snapshot."
+            else
+              git commit -m "snapshot $(date -u +%FT%TZ)"
+              git pull --rebase --autostash || true
+              git push || echo "Push fehlgeschlagen — nächster Versuch"
+            fi
+            if [ "$i" -lt 9 ]; then sleep 300; fi
+          done
