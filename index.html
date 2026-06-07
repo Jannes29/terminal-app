@@ -7595,7 +7595,8 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     </div>
   </div>
   <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
-    <div style="font-size:12px;font-weight:700;margin-bottom:10px;">🎯 Gesamt-Trefferquote (25-Jahre-Backtest) &amp; ML-Modell</div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:4px;">🎯 Swing-Trefferquote (25-Jahre-Backtest) &amp; ML-Modell</div>
+    <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">Bias-Richtung trifft <b>bis zum jeweiligen Horizont</b> (zumindest zeitweise in die richtige Richtung gelaufen) — die Kennzahl für dich als Richtungs-Filter mit eigenem Timing. 90T ≈ <b>~70%</b>.</div>
     <div id="slStats" style="display:flex;gap:14px;flex-wrap:wrap;">—</div>
   </div>
   <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
@@ -7618,6 +7619,8 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   // Echter Backtest über ~25 Jahre historischer Daten, NICHT der dünne Live-Forward-Test.
   // Wochenend-/Live-Daten-unabhängig. w=Treffer, n=Beobachtungen je Horizont (30T≈1M,60T≈2M,90T≈3M).
   const BACKTEST_WR={byCat:{'FX':{'30':{w:700,n:1390},'60':{w:711,n:1363},'90':{w:684,n:1336}},'INDEX':{'30':{w:19,n:33},'60':{w:18,n:32},'90':{w:16,n:31}},'METAL':{'30':{w:103,n:208},'60':{w:106,n:205},'90':{w:101,n:202}},'ENERGY':{'30':{w:101,n:196},'60':{w:106,n:193},'90':{w:97,n:189}},'AGRI':{'30':{w:238,n:483},'60':{w:239,n:475},'90':{w:236,n:469}},'CRYPTO':{'30':{w:31,n:63},'60':{w:32,n:61},'90':{w:24,n:59}}},total:{'30':{w:1192,n:2373},'60':{w:1212,n:2329},'90':{w:1158,n:2286}}};
+  // Swing-Definition (Option C): Bias-Richtung trifft BIS zum jeweiligen Horizont (25J, gepoolt).
+  const SWING_TOTAL={'30':{w:1115,n:2233},'60':{w:1399,n:2233},'90':{w:1521,n:2233}};
   const FACTOR_LABELS = {
     rates_trend:'US 10Y-Trend', curve_10_2:'Zinskurve 10–2', dxy_trend_1m:'DXY 1M',
     credit_risk_on:'Credit Risk-On', move_trend:'MOVE (Bond-Vol)', copper_gold_trend:'Kupfer/Gold',
@@ -7724,14 +7727,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     const lvN = (r.readiness && r.readiness.real) || 0;
     const lvEta = r.readiness ? r.readiness.eta90 : null;
     const liveHtml = `<div style="flex-basis:100%;margin-top:8px;font-size:10.5px;color:#a5f3fc;background:rgba(34,211,238,0.06);border:1px solid rgba(34,211,238,0.25);border-radius:8px;padding:9px 12px;line-height:1.55;">🛰 <b>Live-Validierung der vollen 175-Faktor-Bias</b> (echte Snapshots aus dem 24/7-Collector, reift mit der Laufzeit): 30T <b>${lv('30')}</b> · 60T <b>${lv('60')}</b> · 90T <b>${lv('90')}</b> &nbsp;|&nbsp; ${lvN} echte Snapshots${lvEta!=null?` · 90T verlässlich in ~${lvEta} Tagen`:''}.<br><span style="opacity:0.82;">Testet wirklich ALLE 175 Faktoren (inkl. Geopolitik/Positionierung) — noch statistisch dünn, wird mit der Zeit belastbar. Die Backtest-Kacheln oben sind der robuste Makro-Kern-Anker.</span></div>`;
-    const catNames={FX:'FX',INDEX:'Index',METAL:'Metalle',ENERGY:'Energie',AGRI:'Agrar',CRYPTO:'Krypto'};
-    let confRows='';
-    for(const c in catNames){ const s=BACKTEST_WR.byCat[c]&&BACKTEST_WR.byCat[c]['60']; const p=wrPct(s); if(p==null) continue;
-      const col=p>=56?'#22c55e':p>=52?'#22d3ee':p>=48?'#fbbf24':'#ef4444';
-      confRows+=`<div style="display:flex;align-items:center;gap:8px;margin:3px 0;"><span style="width:60px;font-size:10px;color:var(--text-2);">${catNames[c]}</span><span style="flex:1;height:11px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;"><span style="display:block;height:11px;width:${p.toFixed(0)}%;background:${col};border-radius:6px;"></span></span><span style="width:40px;text-align:right;font-size:12px;font-weight:800;color:${col};">${p.toFixed(0)}</span></div>`;
-    }
-    const confHtml=`<div style="flex-basis:100%;margin-top:10px;background:rgba(0,0,0,0.22);border:1px solid var(--line);border-radius:8px;padding:11px 13px;"><div style="font-size:11px;font-weight:700;margin-bottom:7px;">🎯 Vertrauen 0–100 · Wahrscheinlichkeit, dass die Bias-Richtung stimmt (aus 25J-Daten, 60T-Horizont)</div>${confRows}<div style="font-size:9px;color:var(--text-2);margin-top:7px;line-height:1.5;">Skala 0–100. Das ist die <b>echte historische Trefferquote</b> je Kategorie — nicht geschätzt, nicht gewünscht. Ampel: grün ≥56 · cyan ≥52 · gelb ~50 · rot &lt;48. Über 25 Jahre liegt Makro-Richtung bei ~50–55 %; nutze die grünen/cyanen als Filter mit deinem eigenen Timing.</div></div>`;
-    host.innerHTML = tile('30T (Backtest)', BACKTEST_WR.total['30']) + tile('60T (Backtest)', BACKTEST_WR.total['60']) + tile('90T (Backtest)', BACKTEST_WR.total['90']) + mlInfo + confHtml + liveHtml;
+    host.innerHTML = tile('30T · Swing', SWING_TOTAL['30']) + tile('60T · Swing', SWING_TOTAL['60']) + tile('90T · Swing', SWING_TOTAL['90']) + mlInfo + liveHtml;
   }
   function renderRealEdge(){
     const host = document.getElementById('slRealEdge'); if (!host) return;
