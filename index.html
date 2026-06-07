@@ -7598,17 +7598,25 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     natgas_trend:'NatGas', peripheral_spread:'IT-DE Spread'
   };
   function wrPct(s){ return (s && s.n) ? (s.w / s.n * 100) : null; }
-  function renderBadge(dc){
+  function renderBadge(r){
     const host = document.getElementById('slDataBadge'); if (!host) return;
-    dc = dc || { live:0, synth:0, legacy:0 };
-    const tot = dc.live + dc.synth + dc.legacy;
-    const realPct = tot ? Math.round(dc.live/tot*100) : 0;
-    const pure = (dc.synth===0 && dc.legacy===0);
+    r = r || {}; const dc = r.dataCounts || { live:0, synth:0, legacy:0 };
+    const rd = r.readiness || { real: dc.live||0, ratePerDay:0, eta30:null, eta60:null, eta90:null };
+    const real = rd.real || 0;
+    const eta = d => d==null ? '—' : (d===0 ? '✓ erreicht' : '~'+d+' Tage');
+    const pct = Math.min(100, Math.round(real/1470*100));
     let bg,bd,cl,txt;
-    if (pure && dc.live>=1500){ bg='rgba(34,197,94,0.10)';bd='rgba(34,197,94,0.4)';cl='#86efac'; txt=`✓ Datenbasis: <b>${dc.live}</b> echte Live-Snapshots. Trefferquote belastbar.`; }
-    else if (pure){ bg='rgba(251,191,36,0.10)';bd='rgba(251,191,36,0.45)';cl='#fcd34d'; txt=`⚠ <b>${dc.live}</b> echte Snapshots — echt, aber für 90T (~1440 Vorlauf) noch knapp.`; }
-    else { bg='rgba(239,68,68,0.10)';bd='rgba(239,68,68,0.45)';cl='#fca5a5'; txt=`⚠ <b>Nur ${realPct}% echte Daten</b> (${dc.live} echt · ${dc.synth} synth · ${dc.legacy} unbek.). Synthetische = Simulation, kein realer Markt — Zahlen unten zeigen Modell-Fit auf Rauschen, nicht echten Edge.`; }
-    host.style.cssText = `padding:10px 14px;border-radius:8px;font-size:11.5px;line-height:1.5;background:${bg};border:1px solid ${bd};color:${cl};`;
+    if (real >= 1470) {
+      bg='rgba(34,197,94,0.10)';bd='rgba(34,197,94,0.4)';cl='#86efac';
+      txt = `✓ <b>${real}</b> echte Snapshots gesammelt — Trefferquote über alle Horizonte belastbar.`;
+    } else {
+      bg='rgba(251,191,36,0.10)';bd='rgba(251,191,36,0.45)';cl='#fcd34d';
+      txt = `📡 <b>${real}</b> echte Snapshots · Sammelrate ~${rd.ratePerDay||'?'}/Tag · Reife ${pct}% `+
+            `<span style="display:inline-block;width:90px;height:7px;border-radius:4px;background:rgba(255,255,255,0.12);vertical-align:middle;"><span style="display:inline-block;width:${pct}%;height:7px;border-radius:4px;background:#fbbf24;"></span></span><br>`+
+            `Noch bis verlässlich: <b>30T</b> ${eta(rd.eta30)} · <b>60T</b> ${eta(rd.eta60)} · <b>90T</b> ${eta(rd.eta90)}.<br>`+
+            `<span style="opacity:0.85;">Berechnet nur auf echten Snapshots (synthetische ausgeschlossen). Bis dahin: Zahlen sind echt, aber statistisch dünn — als Tendenz lesen.</span>`;
+    }
+    host.style.cssText = `padding:10px 14px;border-radius:8px;font-size:11.5px;line-height:1.6;background:${bg};border:1px solid ${bd};color:${cl};`;
     host.innerHTML = txt;
   }
   function renderWrChart(byCat){
@@ -7706,7 +7714,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     let r = null;
     try { r = window.MACRO_WINRATE && window.MACRO_WINRATE.compute(); } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
     if (!r) { try { r = JSON.parse(localStorage.getItem('macro_winrate_v1')); } catch(e) {} }
-    if (r) { renderBadge(r.dataCounts); renderWrChart(r.byCat); renderStats(r); renderSelectivity(r); }
+    if (r) { renderBadge(r); renderWrChart(r.byCat); renderStats(r); renderSelectivity(r); }
     const f = (window.MACRO && window.MACRO.factors) || null;
     renderFactorChart(f);
     const reg = window.MACRO && window.MACRO.globalRegime;
@@ -7739,7 +7747,10 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     if (f30) txt += `30T: ab Konviktion <b>≥${f30.t}</b> → <b style="color:#22c55e;">${f30.wr.toFixed(0)}%</b> Treffer (N=${f30.n}). `;
     else txt += '30T: erreicht in keiner Schwelle verlässlich 70% (N≥20). ';
     if (f90) txt += `90T: ab <b>≥${f90.t}</b> → <b style="color:#22c55e;">${f90.wr.toFixed(0)}%</b> (N=${f90.n}).`;
-    const realWarn = (dc.synth>0 || dc.legacy>0) ? '<br><span style="color:#fca5a5;">⚠ Aktuell auf synthetischen/alten Daten gerechnet — diese Kurve wird erst mit echten Live-Daten aussagekräftig. „Verlauf bereinigen" + Terminal mitlaufen lassen.</span>' : '';
+    const rd = r.readiness || {}; const real = rd.real || 0;
+    const realWarn = real < 1470
+      ? `<br><span style="color:#fcd34d;">📡 Gerechnet auf <b>${real}</b> echten Snapshots (synthetische ausgeschlossen) — noch dünn, wird mit jedem Tag belastbarer.</span>`
+      : `<br><span style="color:#86efac;">✓ Auf ${real} echten Snapshots gerechnet — belastbar.</span>`;
     info.innerHTML = txt + realWarn;
   }
   window.renderStratLab = renderAll;
@@ -10238,14 +10249,12 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   // For each (snapshot, asset, horizon): is bias direction correct vs forward return?
   // Returns nested stats {byAsset:{asset:{30:{w,n},60,90}}, byCat, total}
   function computeWinRate() {
-    const hist = (window.MACRO_HISTORY && window.MACRO_HISTORY.load()) || [];
-    // Proxy-Horizons: real 30/60/90 days = 2880/5760/8640 snaps (unrealistic for typical history)
-    // Use proportional shorter forward windows that still test trend persistence:
-    //   "30T" → 24h forward (96 snaps)  — kurzfristige Trend-Treffsicherheit
-    //   "60T" → 7 days forward (672 snaps) — mittelfristig
-    //   "90T" → 15 days forward (1440 snaps) — strukturell
-    // ADAPTIV: bei wenig Historie kleinere Fenster nutzen (sonst N=0 → leere Charts), gedeckelt
-    // auf die echten Proxy-Fenster. Mit wachsender Historie konvergiert es automatisch dorthin.
+    const histAll = (window.MACRO_HISTORY && window.MACRO_HISTORY.load()) || [];
+    // EHRLICHE Trefferquote: NUR echte Snapshots (synth:false). Synthetische Bootstrap-Daten
+    // werden NICHT mehr in die Trefferquote eingerechnet (verfälschen sie sonst).
+    const hist = histAll.filter(s => s && s.synth === false);
+    // Adaptive Forward-Fenster, passend zur vorhandenen ECHTEN Historie, gedeckelt auf die
+    // echten Proxy-Fenster (24h/7d/15d). Wächst mit der Historie automatisch mit.
     const _N = hist.length;
     const HORIZONS = {
       '30': Math.min(96,   Math.max(3, Math.floor(_N * 0.12))),
@@ -10254,13 +10263,22 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     };
     const BIAS_TH = 0.05;
     const SEL_TH = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5];
-    // Datenbasis-Herkunft: echt (live) vs synthetisch vs unbekannt (vor diesem Update erzeugt)
+    // Datenbasis-Herkunft (über die GESAMTE Historie, nur zur Transparenz-Anzeige)
     const dataCounts = { live: 0, synth: 0, legacy: 0 };
-    hist.forEach(s => {
-      if (s.synth === true) dataCounts.synth++;
-      else if (s.synth === false) dataCounts.live++;
+    histAll.forEach(s => {
+      if (s && s.synth === true) dataCounts.synth++;
+      else if (s && s.synth === false) dataCounts.live++;
       else dataCounts.legacy++;
     });
+    // Reife/ETA: wie viele echte Snapshots, Sammelrate, geschätzte Tage bis verlässlich
+    let readiness = { real: _N, ratePerDay: 0, eta30: null, eta60: null, eta90: null };
+    if (_N >= 2 && hist[_N-1].t && hist[0].t) {
+      const spanD = Math.max(0.02, (hist[_N-1].t - hist[0].t) / 86400000);
+      const rate = _N / spanD;
+      const eta = tgt => rate > 0 ? Math.max(0, Math.ceil((tgt - _N) / rate)) : null;
+      // Ziel-Snapshots für verlässliche Auswertung je Horizont (Fenster + ~Stichprobe)
+      readiness = { real: _N, ratePerDay: +rate.toFixed(1), eta30: eta(120), eta60: eta(700), eta90: eta(1470) };
+    }
     const result = {
       byAsset: {},
       byCat: {},
@@ -10268,6 +10286,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       ts: Date.now(),
       histLen: hist.length,
       dataCounts: dataCounts,
+      readiness: readiness,
       selThresholds: SEL_TH,
       selectivity: SEL_TH.reduce((o, th) => { o[th] = { '30':{w:0,n:0}, '60':{w:0,n:0}, '90':{w:0,n:0} }; return o; }, {})
     };
