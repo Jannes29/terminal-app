@@ -7571,7 +7571,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;">
       <div style="font-size:12px;font-weight:700;margin-bottom:10px;">📊 Trefferquote pro Kategorie · 25-Jahre-Backtest</div>
       <div style="height:240px;"><canvas id="slWrChart"></canvas></div>
-      <div style="font-size:10px;color:var(--text-2);margin-top:6px;">Echter historischer Backtest (point-in-time, ~25 Jahre, alle Assets) — Anteil korrekter Bias-Richtung vs. tatsächlicher Folge-Return über 30T/60T/90T. Unabhängig von Wochenende/Live-Daten. 50% = Zufall.</div>
+      <div style="font-size:10px;color:var(--text-2);margin-top:6px;">Historischer Backtest (point-in-time, ~25 Jahre, alle Assets) auf Basis der <b>Makro-Kern-Faktoren mit echter Historie</b> (Dollar · Zinsen · Zinskurve · Inflation · Arbeitsmarkt · Risk · Rohstoffe) — <b>nicht alle 175</b> (Geopolitik/Positionierung u.a. existieren historisch nicht). Anteil korrekter Bias-Richtung vs. Folge-Return. 50% = Zufall. Die volle 175-Faktor-Bias wird vom Live-Tracker geprüft.</div>
     </div>
     <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
@@ -7619,7 +7619,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     r = r || {}; const rd = r.readiness || { real:0 };
     const real = rd.real || 0;
     host.style.cssText = 'padding:10px 14px;border-radius:8px;font-size:11.5px;line-height:1.6;background:rgba(34,211,238,0.08);border:1px solid rgba(34,211,238,0.35);color:#a5f3fc;';
-    host.innerHTML = `📊 <b>Trefferquote-Chart &amp; Gesamtzahlen = 25-Jahre-Backtest</b> (point-in-time, ~2.300 Beobachtungen je Horizont, alle Assets) — ein echter historischer Backtest, <b>unabhängig von Wochenende/Live-Daten</b>. `+
+    host.innerHTML = `📊 <b>Trefferquote-Chart &amp; Gesamtzahlen = 25-Jahre-Backtest des Makro-Kerns</b> (point-in-time, ~2.300 Beob./Horizont, alle Assets · ~7 Kernfaktoren mit echter Historie — <b>nicht alle 175</b>; Geopolitik/Positionierung existieren historisch nicht und werden vom Live-Tracker geprüft) — <b>unabhängig von Wochenende/Live-Daten</b>. `+
       `Ergebnis liegt nahe 50% → die Makro-Bias hat als reines Richtungssignal keinen starken Edge (ehrlich gemessen).<br>`+
       `<span style="opacity:0.85;">Daneben sammelt der Terminal aktuell <b>${real}</b> echte Live-Snapshots als zusätzlichen Live-Cross-Check (siehe Selektivität unten) — der wächst mit der Laufzeit.</span>`;
   }
