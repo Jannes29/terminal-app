@@ -15333,8 +15333,8 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   applyGeoRiskLive();
   // Re-run bias engine when macro factors update (event from macro-engine)
   window.addEventListener('macroUpdate', () => runAllLive());
-  setInterval(runAllLive, 60 * 1000);
-  setInterval(fetchDayLiveBias, 60 * 1000);
+  setInterval(runAllLive, 5 * 60 * 1000);          // 5-Min-Takt
+  setInterval(fetchDayLiveBias, 5 * 60 * 1000);    // 5-Min-Takt
   setInterval(applyGeoRiskLive, 10 * 60 * 1000); // Geo-risk every 10min
 })();
 </script>
@@ -15602,9 +15602,9 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     updateWatchlist();
   }
 
-  // Initial + 60s loop
+  // Initial + 5-Min-Loop
   refreshAll();
-  setInterval(refreshAll, 60 * 1000);
+  setInterval(refreshAll, 5 * 60 * 1000);
 })();
 </script>
 
@@ -17687,7 +17687,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     });
   });
 
-  setInterval(refreshMacro, 60 * 1000);            // 1min — price/rate data
+  setInterval(refreshMacro, 5 * 60 * 1000);        // 5min — Preis-/Zinsdaten
   setInterval(refreshSentiment, 15 * 60 * 1000);   // 15min — sentiment (rate-limited Tavily)
 })();
 </script>
@@ -18445,7 +18445,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   });
 
   refreshTopTrades();
-  setInterval(refreshTopTrades, 60 * 1000);
+  setInterval(refreshTopTrades, 5 * 60 * 1000);    // 5-Min-Takt
   // Re-run when macro engine publishes classScores (fixes race on first paint)
   window.addEventListener('macroUpdate', () => refreshTopTrades());
 })();
