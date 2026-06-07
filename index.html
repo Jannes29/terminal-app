@@ -10007,6 +10007,8 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     renderTable(summary);
     renderFeatImp(meta.featImp);
     renderLossCurve(meta.lossCurve);
+    // Strategie-Lab neu rendern, damit die „ML-Modelle"-Box die frische Anzahl zeigt (statt 0)
+    if (window.renderStratLab) setTimeout(() => { try { window.renderStratLab(); } catch(e){} }, 200);
   }
 
   function renderTable(summary) {
