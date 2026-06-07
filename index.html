@@ -7583,11 +7583,6 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     </div>
   </div>
   <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
-    <div style="font-size:12px;font-weight:700;margin-bottom:4px;">🔬 Faktor-Analyse · welche Wirtschaftsdaten tragen Edge?</div>
-    <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">Information Coefficient (Rangkorrelation Faktor ↔ Folge-Return). Grün = echter Vorteil, Rot = zieht — so wie das Modell ihn nutzt — in die falsche Richtung. Misst für jeden einzelnen Makro-/Wirtschaftsfaktor, ob er wirklich Vorhersagekraft hat.</div>
-    <div id="slFactorEdge">—</div>
-  </div>
-  <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
     <div style="font-size:12px;font-weight:700;margin-bottom:4px;">🎯 Selektivität · wo wird der Terminal treffsicher?</div>
     <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">Trefferquote steigt, je höher die geforderte Konviktion (|Bias|). So findest du die Schwelle für 70–80% — weniger Signale, aber treffsicherer. Das ist der seriöse Weg zu hoher Trefferquote (Selektivität), nicht „immer recht haben".</div>
     <div style="height:240px;"><canvas id="slSelChart"></canvas></div>
@@ -7602,6 +7597,11 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     <div style="font-size:12px;font-weight:700;margin-bottom:4px;">✅ Realer Edge-Test · aus deinem Trade-Journal</div>
     <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">Bringt das Befolgen der Strategie bei deinen echten Trades mehr? (Mit-Bias vs. Gegen-Bias)</div>
     <div id="slRealEdge">—</div>
+  </div>
+  <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:16px;">
+    <div style="font-size:12px;font-weight:700;margin-bottom:4px;">🔬 Faktor-Analyse · welche Wirtschaftsdaten tragen Edge?</div>
+    <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">Information Coefficient (Rangkorrelation Faktor ↔ Folge-Return). Grün = echter Vorteil, Rot = zieht — so wie das Modell ihn nutzt — in die falsche Richtung. Misst für jeden einzelnen Makro-/Wirtschaftsfaktor, ob er wirklich Vorhersagekraft hat.</div>
+    <div id="slFactorEdge">—</div>
   </div>
 </div>
 <script>
