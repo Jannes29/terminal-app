@@ -7802,8 +7802,9 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   // und danach bei jedem Engine-Update auffrischen — sonst bleiben sie leer, weil der
   // erste Render vor dem Laden der Historie lief.
   setTimeout(renderAll, 9000);
-  let _slDebounce;
-  window.addEventListener('macroUpdate', () => { clearTimeout(_slDebounce); _slDebounce = setTimeout(renderAll, 1500); });
+  // Ruhiger 5-Min-Takt — NICHT bei jedem Daten-Update neu rendern (sonst bauen sich die 3 Charts
+  // ständig neu auf = Flackern). Beim Start geladen, danach alle 5 Min + „Neu berechnen"-Button.
+  setInterval(renderAll, 5 * 60 * 1000);
 })();
 </script>
 
