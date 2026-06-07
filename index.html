@@ -7567,6 +7567,11 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       <div>Geo-Risk: <b id="slGeo" style="color:#fbbf24;">—</b></div>
     </div>
   </div>
+  <div style="background:rgba(34,211,238,0.04);border:1px solid rgba(34,211,238,0.3);border-radius:10px;padding:14px;margin-bottom:16px;">
+    <div style="font-size:12px;font-weight:700;margin-bottom:4px;">🧭 Richtungs-Sicherheit heute · wie sicher ist der Terminal bei LONG/SHORT?</div>
+    <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">0–100 pro Asset, kalibriert an 25 Jahren (Swing-Definition: Bias-Richtung trifft innerhalb ~3 Monaten zumindest zeitweise). <b>Hoch = verlässliche Richtung</b> als Filter für dein eigenes Timing · nahe 50 = Münzwurf, überspringen. Das ist die Zahl, wie sicher sich der Terminal bei der Richtung ist.</div>
+    <div id="slDirConf">—</div>
+  </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:16px;">
     <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;">
       <div style="font-size:12px;font-weight:700;margin-bottom:10px;">📊 Trefferquote pro Kategorie · 25-Jahre-Backtest</div>
@@ -7760,6 +7765,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     if (typeof reg === 'number') { const el=document.getElementById('slRegime'); if(el){ el.textContent=(reg>=0?'+':'')+reg.toFixed(2); el.style.color = reg>0.1?'#22c55e':reg<-0.1?'#ef4444':'#fbbf24'; } }
     if (f && f.geo_risk!=null) { const el=document.getElementById('slGeo'); if(el){ el.textContent=f.geo_risk+'/100'; el.style.color = f.geo_risk>50?'#ef4444':f.geo_risk>30?'#fbbf24':'#22c55e'; } }
     renderRealEdge();
+    try{ renderDirConfidence(); }catch(e){ if(window.DEBUG)console.warn('[dirConf]',e); }
   }
   function renderSelectivity(r){
     if (typeof Chart === 'undefined' || !r || !r.selectivity) return;
@@ -7878,6 +7884,36 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       html+='</table></div>';
       html+=`<div style="font-size:9.5px;color:var(--text-2);margin-top:6px;line-height:1.5;">Hochfrequent (24h/72h-Horizont) auf <b>${live.snaps}</b> echten Snapshots (synthetische ausgeschlossen). Noch dünn — als Tendenz lesen; wird mit der Historie belastbarer und nähert sich der 25-Jahre-Referenz an.</div>`;
     }
+    host.innerHTML=html;
+  }
+  // ===== Richtungs-Sicherheit 0–100 pro Asset (kalibriert an 25J Swing-Trefferquote) =====
+  const SWING_WR = { FX:68, INDEX:62, METAL:69, ENERGY:68, AGRI:69, CRYPTO:61 };
+  function dcCat(a){
+    if(a.indexOf('/')>=0 || /^(USD|EUR|GBP|JPY|CHF|AUD|NZD|CAD)$/.test(a)) return 'FX';
+    if(/NAS100|SPX500|GER40|FTSE|NDX|SPX|DAX/.test(a)) return 'INDEX';
+    if(/XAU|XAG|XCU|XPT|XPD|GOLD|SILVER|COPPER|PLAT|PALL/.test(a)) return 'METAL';
+    if(/WTI|NGAS|BRENT|OIL|GAS/.test(a)) return 'ENERGY';
+    if(/^(ZW|ZC|ZS|KC|SB|CC|CT)$/.test(a)) return 'AGRI';
+    if(/BTC|ETH|SOL/.test(a)) return 'CRYPTO';
+    return null;
+  }
+  function renderDirConfidence(){
+    const host=document.getElementById('slDirConf'); if(!host) return;
+    const cs=(window.MACRO && window.MACRO.classScores) || null;
+    if(!cs || !Object.keys(cs).length){ host.innerHTML='<span style="font-size:11px;color:var(--text-2);">Lädt… (Engine berechnet gerade die Bias)</span>'; return; }
+    const rows=[];
+    for(const a in cs){ const b=cs[a]; if(b==null||!isFinite(b)) continue; const cat=dcCat(a); if(!cat) continue;
+      const base=SWING_WR[cat]||64; const conv=Math.min(1,Math.abs(b)/0.6);
+      const conf=Math.round(50+(base-50)*conv);
+      rows.push({a, dir:(b>0?'LONG':'SHORT'), conf}); }
+    if(!rows.length){ host.innerHTML='<span style="font-size:11px;color:var(--text-2);">Keine Bias-Werte verfügbar.</span>'; return; }
+    rows.sort((x,y)=>y.conf-x.conf);
+    const col=c=> c>=64?'#22c55e':c>=58?'#22d3ee':c>=54?'#fbbf24':'#9ca3af';
+    let html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:6px;">';
+    for(const r of rows.slice(0,21)){ const dc=r.dir==='LONG'?'#22c55e':'#ef4444';
+      html+=`<div style="background:rgba(0,0,0,0.25);border-radius:7px;padding:7px 9px;display:flex;align-items:center;gap:7px;"><span style="font-size:11px;font-weight:700;min-width:48px;">${r.a}</span><span style="font-size:9px;font-weight:800;color:${dc};min-width:36px;">${r.dir}</span><span style="flex:1;height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;"><span style="display:block;height:8px;width:${r.conf}%;background:${col(r.conf)};border-radius:4px;"></span></span><span style="font-size:12px;font-weight:800;color:${col(r.conf)};min-width:22px;text-align:right;">${r.conf}</span></div>`;
+    }
+    html+='</div>';
     host.innerHTML=html;
   }
   window.renderStratLab = renderAll;
