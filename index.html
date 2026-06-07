@@ -15632,6 +15632,13 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       }
       // Altlast aufräumen: pessimistischen v1-Zustand entfernen
       localStorage.removeItem('tavily_state_v1');
+      // Migration: gesperrte Keys OHNE gespeicherten Grund stammen aus der alten Logik und sind
+      // unzuverlässig (auch funktionierende Keys wurden pauschal gesperrt) → einmal komplett neu testen.
+      const s = JSON.parse(localStorage.getItem(STATE_KEY) || 'null');
+      if (s && Array.isArray(s.burned) && s.burned.length && (!s.reasons || Object.keys(s.reasons).length === 0)) {
+        s.burned = []; s.lastBurnTs = 0;
+        localStorage.setItem(STATE_KEY, JSON.stringify(s));
+      }
     } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
   })();
   function loadState() {
@@ -15735,8 +15742,10 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
         }
         if (!r.ok) return null;
         bumpUsage(c.idx);
-        // Round-Robin: nach erfolgreichem Call zum nächsten Key wechseln → gleichmäßige Last, „wechselt immer"
+        // Round-Robin + SELF-HEAL: erfolgreicher Key ist nicht verbraucht → aus Sperrliste raus.
         const stOk = loadState();
+        stOk.burned = (stOk.burned || []).filter(x => x !== c.idx);
+        if (stOk.reasons) delete stOk.reasons[c.idx];
         stOk.idx = (c.idx + 1) % TAVILY_KEYS.length;
         saveState(stOk);
         return await r.json();
