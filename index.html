@@ -7698,12 +7698,20 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
         const avg = accs.length ? (accs.reduce((a,b)=>a+b,0)/accs.length*100) : null;
         const real = (r.readiness && r.readiness.real) || 0;
         const mature = real >= 1470;                 // gleiche Schwelle wie Trefferquote
-        const col = mature ? '#86efac' : '#fcd34d';
-        const lbl = mature
-          ? (avg != null ? '✓ Ø Accuracy ' + avg.toFixed(0) + '% · belastbar' : '✓ belastbar')
-          : '⚠ illustrativ — überwiegend auf synthetischen Daten trainiert; reift mit echter Historie';
+        const need = Math.max(0, 50 - real);
+        let col, lbl, tag;
+        if (arr.length === 0) {            // noch nichts trainiert (zu wenig echte Historie)
+          col = '#fcd34d'; tag = ' · im Aufbau';
+          lbl = '⏳ noch keine — braucht ~50 echte Snapshots' + (need > 0 ? ' (noch ' + need + ')' : '') + '; trainiert dann automatisch';
+        } else if (mature) {
+          col = '#86efac'; tag = '';
+          lbl = avg != null ? '✓ Ø Accuracy ' + avg.toFixed(0) + '% · belastbar' : '✓ belastbar';
+        } else {
+          col = '#fcd34d'; tag = ' · illustrativ';
+          lbl = '⚠ illustrativ — noch dünne Datenbasis; reift mit echter Historie';
+        }
         mlInfo = `<div style="flex:1;min-width:120px;background:rgba(167,139,250,0.10);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:10px 12px;">
-          <div style="font-size:10px;color:var(--text-2);">🧠 ML-Modelle${mature ? '' : ' · illustrativ'}</div>
+          <div style="font-size:10px;color:var(--text-2);">🧠 ML-Modelle${tag}</div>
           <div style="font-size:20px;font-weight:800;color:#c4b5fd;">${arr.length}</div>
           <div style="font-size:9px;color:${col};line-height:1.35;">${lbl}</div></div>`;
       }
@@ -9654,9 +9662,9 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       setAutoStatus('🤖 AUTO: warte auf Macro-Engine…', '#fbbf24');
       return;
     }
-    if (hist.length < 50) {
+    if (hist.length < 25) {
       // Keine synthetische Erzeugung mehr — wir warten auf echte Snapshots. Regime läuft trotzdem.
-      setAutoStatus(`🤖 AUTO: sammelt echte Live-Daten (${hist.length}/50) · Auswertung wächst mit`, '#fbbf24');
+      setAutoStatus(`🤖 AUTO: sammelt echte Live-Daten (${hist.length}/25) · Auswertung wächst mit`, '#fbbf24');
       if (!status.regime || (now - status.regime) > REGIME_INTERVAL) {
         try { detectRegime(); } catch(e) {}
       }
@@ -9674,12 +9682,12 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     if (hist.length >= 40 && (!status.opt || (now - status.opt) > OPT_INTERVAL)) {
       await safeRun('opt', () => Promise.resolve(optimizeAll()));
     }
-    // ML — every 30min if history >= 50, via window.MACRO_ML
-    if (hist.length >= 50 && window.MACRO_ML && (!status.ml || (now - status.ml) > ML_INTERVAL)) {
+    // ML — every 30min if history >= 25 (adaptives Trainingsfenster), via window.MACRO_ML
+    if (hist.length >= 25 && window.MACRO_ML && (!status.ml || (now - status.ml) > ML_INTERVAL)) {
       await safeRun('ml', () => Promise.resolve(window.MACRO_ML.train()));
     }
-    // Win-Rate — every 60min if history >= 50
-    if (hist.length >= 50 && window.MACRO_WINRATE && (!status.winrate || (now - status.winrate) > WR_INTERVAL)) {
+    // Win-Rate — every 60min if history >= 25
+    if (hist.length >= 25 && window.MACRO_WINRATE && (!status.winrate || (now - status.winrate) > WR_INTERVAL)) {
       await safeRun('winrate', () => Promise.resolve(window.MACRO_WINRATE.compute()));
     }
     // Trust-Score — runs after any other job completes (cheap)
@@ -9921,10 +9929,13 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   function trainAll() {
     const hist = (window.MACRO_HISTORY && window.MACRO_HISTORY.load()) || [];
     const epochs = parseInt(document.getElementById('mlEpochs').textContent) || 200;
-    if (hist.length < 50) {
-      document.getElementById('mlTableBody').innerHTML = `<tr><td colspan="8" style="padding:30px;text-align:center;color:var(--text-2);">Mindestens 50 Snapshots nötig (aktuell ${hist.length}). Bei 15min-Cadence ≈ ${Math.ceil((50-hist.length)*15/60)}h warten.</td></tr>`;
+    if (hist.length < 25) {
+      document.getElementById('mlTableBody').innerHTML = `<tr><td colspan="8" style="padding:30px;text-align:center;color:var(--text-2);">Mindestens 25 echte Snapshots nötig (aktuell ${hist.length}).</td></tr>`;
       return;
     }
+    // Adaptives Vorwärtsfenster — passt sich der vorhandenen ECHTEN Historie an (gedeckelt auf 96),
+    // damit das ML auch mit wenig echter Historie trainiert statt 0 Modelle zu liefern.
+    const HW = Math.min(96, Math.max(5, Math.floor(hist.length * 0.3)));
     const models = {};
     const summary = [];
     const allLoss = [];
@@ -9933,7 +9944,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     const featAbsSum = new Array(N_FEAT).fill(0);
     let featAssetsCount = 0;
     for (const asset of ASSETS) {
-      const ds = buildDataset(hist, asset, 96);
+      const ds = buildDataset(hist, asset, HW);
       if (!ds || ds.X.length < 10) {
         summary.push({ asset, status: 'SKIP', samples: ds ? ds.X.length : 0 });
         continue;
@@ -10200,7 +10211,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   let lastAutoTrain = 0;
   window.addEventListener('historyUpdate', () => {
     const hist = (window.MACRO_HISTORY && window.MACRO_HISTORY.load()) || [];
-    if (hist.length < 50) return;
+    if (hist.length < 25) return;
     const now = Date.now();
     // Retrain every 2h if active tab is ml
     if (now - lastAutoTrain > 2 * 3600 * 1000) {
