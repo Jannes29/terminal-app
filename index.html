@@ -7569,9 +7569,9 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:16px;">
     <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;">
-      <div style="font-size:12px;font-weight:700;margin-bottom:10px;">📊 Trefferquote der Makro-Bias-Richtung · pro Kategorie</div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:10px;">📊 Trefferquote pro Kategorie · 25-Jahre-Backtest</div>
       <div style="height:240px;"><canvas id="slWrChart"></canvas></div>
-      <div style="font-size:10px;color:var(--text-2);margin-top:6px;">Anteil korrekter Richtungs-Vorhersagen vs. tatsächlicher Vorwärts-Return. 50% = Zufall.</div>
+      <div style="font-size:10px;color:var(--text-2);margin-top:6px;">Echter historischer Backtest (point-in-time, ~25 Jahre, alle Assets) — Anteil korrekter Bias-Richtung vs. tatsächlicher Folge-Return über 30T/60T/90T. Unabhängig von Wochenende/Live-Daten. 50% = Zufall.</div>
     </div>
     <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
@@ -7583,7 +7583,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     </div>
   </div>
   <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
-    <div style="font-size:12px;font-weight:700;margin-bottom:10px;">🎯 Gesamt-Trefferquote &amp; ML-Modell</div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:10px;">🎯 Gesamt-Trefferquote (25-Jahre-Backtest) &amp; ML-Modell</div>
     <div id="slStats" style="display:flex;gap:14px;flex-wrap:wrap;">—</div>
   </div>
   <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
@@ -7602,6 +7602,10 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
 <script>
 (function(){
   let wrChart = null, facChart = null, selChart = null;
+  // === 25-JAHRE-BACKTEST (point-in-time, extern berechnet) — speist Chart + Gesamtzahlen.
+  // Echter Backtest über ~25 Jahre historischer Daten, NICHT der dünne Live-Forward-Test.
+  // Wochenend-/Live-Daten-unabhängig. w=Treffer, n=Beobachtungen je Horizont (30T≈1M,60T≈2M,90T≈3M).
+  const BACKTEST_WR={byCat:{'FX':{'30':{w:700,n:1390},'60':{w:711,n:1363},'90':{w:684,n:1336}},'INDEX':{'30':{w:19,n:33},'60':{w:18,n:32},'90':{w:16,n:31}},'METAL':{'30':{w:103,n:208},'60':{w:106,n:205},'90':{w:101,n:202}},'ENERGY':{'30':{w:101,n:196},'60':{w:106,n:193},'90':{w:97,n:189}},'AGRI':{'30':{w:238,n:483},'60':{w:239,n:475},'90':{w:236,n:469}},'CRYPTO':{'30':{w:31,n:63},'60':{w:32,n:61},'90':{w:24,n:59}}},total:{'30':{w:1192,n:2373},'60':{w:1212,n:2329},'90':{w:1158,n:2286}}};
   const FACTOR_LABELS = {
     rates_trend:'US 10Y-Trend', curve_10_2:'Zinskurve 10–2', dxy_trend_1m:'DXY 1M',
     credit_risk_on:'Credit Risk-On', move_trend:'MOVE (Bond-Vol)', copper_gold_trend:'Kupfer/Gold',
@@ -7612,24 +7616,12 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   function wrPct(s){ return (s && s.n) ? (s.w / s.n * 100) : null; }
   function renderBadge(r){
     const host = document.getElementById('slDataBadge'); if (!host) return;
-    r = r || {}; const dc = r.dataCounts || { live:0, synth:0, legacy:0 };
-    const rd = r.readiness || { real: dc.live||0, ratePerDay:0, eta30:null, eta60:null, eta90:null };
+    r = r || {}; const rd = r.readiness || { real:0 };
     const real = rd.real || 0;
-    const eta = d => d==null ? '—' : (d===0 ? '✓ erreicht' : '~'+d+' Tage');
-    const pct = Math.min(100, Math.round(real/1470*100));
-    let bg,bd,cl,txt;
-    if (real >= 1470) {
-      bg='rgba(34,197,94,0.10)';bd='rgba(34,197,94,0.4)';cl='#86efac';
-      txt = `✓ <b>${real}</b> echte Snapshots gesammelt — Trefferquote über alle Horizonte belastbar.`;
-    } else {
-      bg='rgba(251,191,36,0.10)';bd='rgba(251,191,36,0.45)';cl='#fcd34d';
-      txt = `📡 <b>${real}</b> echte Snapshots · Sammelrate ~${rd.ratePerDay||'?'}/Tag · Reife ${pct}% `+
-            `<span style="display:inline-block;width:90px;height:7px;border-radius:4px;background:rgba(255,255,255,0.12);vertical-align:middle;"><span style="display:inline-block;width:${pct}%;height:7px;border-radius:4px;background:#fbbf24;"></span></span><br>`+
-            `Noch bis verlässlich: <b>30T</b> ${eta(rd.eta30)} · <b>60T</b> ${eta(rd.eta60)} · <b>90T</b> ${eta(rd.eta90)}.<br>`+
-            `<span style="opacity:0.85;">Berechnet nur auf echten Snapshots (synthetische ausgeschlossen). Bis dahin: Zahlen sind echt, aber statistisch dünn — als Tendenz lesen.</span>`;
-    }
-    host.style.cssText = `padding:10px 14px;border-radius:8px;font-size:11.5px;line-height:1.6;background:${bg};border:1px solid ${bd};color:${cl};`;
-    host.innerHTML = txt;
+    host.style.cssText = 'padding:10px 14px;border-radius:8px;font-size:11.5px;line-height:1.6;background:rgba(34,211,238,0.08);border:1px solid rgba(34,211,238,0.35);color:#a5f3fc;';
+    host.innerHTML = `📊 <b>Trefferquote-Chart &amp; Gesamtzahlen = 25-Jahre-Backtest</b> (point-in-time, ~2.300 Beobachtungen je Horizont, alle Assets) — ein echter historischer Backtest, <b>unabhängig von Wochenende/Live-Daten</b>. `+
+      `Ergebnis liegt nahe 50% → die Makro-Bias hat als reines Richtungssignal keinen starken Edge (ehrlich gemessen).<br>`+
+      `<span style="opacity:0.85;">Daneben sammelt der Terminal aktuell <b>${real}</b> echte Live-Snapshots als zusätzlichen Live-Cross-Check (siehe Selektivität unten) — der wächst mit der Laufzeit.</span>`;
   }
   function renderWrChart(byCat){
     const cats = ['FX','INDEX','METAL','ENERGY','AGRI','CRYPTO'];
@@ -7716,7 +7708,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
           <div style="font-size:9px;color:${col};line-height:1.35;">${lbl}</div></div>`;
       }
     } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
-    host.innerHTML = tile('30T gesamt', r.total['30']) + tile('60T gesamt', r.total['60']) + tile('90T gesamt', r.total['90']) + mlInfo;
+    host.innerHTML = tile('30T (Backtest)', BACKTEST_WR.total['30']) + tile('60T (Backtest)', BACKTEST_WR.total['60']) + tile('90T (Backtest)', BACKTEST_WR.total['90']) + mlInfo;
   }
   function renderRealEdge(){
     const host = document.getElementById('slRealEdge'); if (!host) return;
@@ -7748,7 +7740,9 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     let r = null;
     try { r = window.MACRO_WINRATE && window.MACRO_WINRATE.compute(); } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
     if (!r) { try { r = JSON.parse(localStorage.getItem('macro_winrate_v1')); } catch(e) {} }
-    if (r) { renderBadge(r); renderWrChart(r.byCat); renderStats(r); renderSelectivity(r); }
+    renderWrChart(BACKTEST_WR.byCat);
+    if (r) { renderBadge(r); renderStats(r); renderSelectivity(r); }
+    else { renderBadge({}); renderStats({ readiness:{real:0} }); }
     const f = (window.MACRO && window.MACRO.factors) || null;
     renderFactorChart(f);
     const reg = window.MACRO && window.MACRO.globalRegime;
