@@ -7568,8 +7568,15 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     </div>
   </div>
   <div style="background:rgba(34,211,238,0.04);border:1px solid rgba(34,211,238,0.3);border-radius:10px;padding:14px;margin-bottom:16px;">
-    <div style="font-size:12px;font-weight:700;margin-bottom:4px;">🧭 Richtungs-Sicherheit heute · wie sicher ist der Terminal bei LONG/SHORT?</div>
-    <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">0–100 pro Asset, kalibriert an 25 Jahren (Swing-Definition: Bias-Richtung trifft innerhalb ~3 Monaten zumindest zeitweise). <b>Hoch = verlässliche Richtung</b> als Filter für dein eigenes Timing · nahe 50 = Münzwurf, überspringen. Das ist die Zahl, wie sicher sich der Terminal bei der Richtung ist.</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+      <div style="font-size:12px;font-weight:700;">🧭 Richtungs-Sicherheit · wie sicher ist der Terminal bei LONG/SHORT?</div>
+      <div id="dcHzBtns" style="display:flex;gap:4px;">
+        <button data-hz="30" onclick="window.__dcSetHz&&window.__dcSetHz('30')" style="background:rgba(255,255,255,0.06);color:#9ca3af;border:1px solid var(--line);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:600;cursor:pointer;">30T</button>
+        <button data-hz="60" onclick="window.__dcSetHz&&window.__dcSetHz('60')" style="background:rgba(255,255,255,0.06);color:#9ca3af;border:1px solid var(--line);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:600;cursor:pointer;">60T</button>
+        <button data-hz="90" onclick="window.__dcSetHz&&window.__dcSetHz('90')" style="background:rgba(255,255,255,0.06);color:#9ca3af;border:1px solid var(--line);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:600;cursor:pointer;">90T</button>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">0–100 pro Asset, kalibriert an 25 Jahren auf den <b>gewählten Horizont</b> (Richtung trifft bis 30T/60T/90T). <b>Hoch = verlässliche Richtung</b> als Filter für dein eigenes Timing · nahe 50 = Münzwurf, überspringen. Längerer Horizont = höhere Trefferquote.</div>
     <div id="slDirConf">—</div>
   </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:16px;">
@@ -7886,8 +7893,11 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     }
     host.innerHTML=html;
   }
-  // ===== Richtungs-Sicherheit 0–100 pro Asset (kalibriert an 25J Swing-Trefferquote) =====
-  const SWING_WR = { FX:68, INDEX:62, METAL:69, ENERGY:68, AGRI:69, CRYPTO:61 };
+  // ===== Richtungs-Sicherheit 0–100 pro Asset (kalibriert an 25J, PRO HORIZONT) =====
+  // Richtung trifft BIS zum jeweiligen Horizont (30T≈1M, 60T≈2M, 90T≈3M).
+  const SWING_H = {'FX':{'30':50,'60':63,'90':68},'INDEX':{'30':51,'60':62,'90':67},'METAL':{'30':50,'60':64,'90':69},'ENERGY':{'30':51,'60':63,'90':67},'AGRI':{'30':49,'60':61,'90':69},'CRYPTO':{'30':53,'60':61,'90':61}};
+  let dcHorizon = '90';
+  window.__dcSetHz = function(h){ dcHorizon = h; try{ renderDirConfidence(); }catch(e){} };
   function dcCat(a){
     if(a.indexOf('/')>=0 || /^(USD|EUR|GBP|JPY|CHF|AUD|NZD|CAD)$/.test(a)) return 'FX';
     if(/NAS100|SPX500|GER40|FTSE|NDX|SPX|DAX/.test(a)) return 'INDEX';
@@ -7899,11 +7909,14 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   }
   function renderDirConfidence(){
     const host=document.getElementById('slDirConf'); if(!host) return;
+    // aktiven Horizont-Button hervorheben
+    try{ document.querySelectorAll('#dcHzBtns button').forEach(btn=>{ const on=btn.dataset.hz===dcHorizon;
+      btn.style.background=on?'#22d3ee':'rgba(255,255,255,0.06)'; btn.style.color=on?'#001':'#9ca3af'; btn.style.fontWeight=on?'800':'600'; }); }catch(e){}
     const cs=(window.MACRO && window.MACRO.classScores) || null;
     if(!cs || !Object.keys(cs).length){ host.innerHTML='<span style="font-size:11px;color:var(--text-2);">Lädt… (Engine berechnet gerade die Bias)</span>'; return; }
     const rows=[];
     for(const a in cs){ const b=cs[a]; if(b==null||!isFinite(b)) continue; const cat=dcCat(a); if(!cat) continue;
-      const base=SWING_WR[cat]||64; const conv=Math.min(1,Math.abs(b)/0.6);
+      const base=(SWING_H[cat]&&SWING_H[cat][dcHorizon])||60; const conv=Math.min(1,Math.abs(b)/0.6);
       const conf=Math.round(50+(base-50)*conv);
       rows.push({a, dir:(b>0?'LONG':'SHORT'), conf}); }
     if(!rows.length){ host.innerHTML='<span style="font-size:11px;color:var(--text-2);">Keine Bias-Werte verfügbar.</span>'; return; }
