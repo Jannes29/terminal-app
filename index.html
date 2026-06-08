@@ -7581,9 +7581,9 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:16px;">
     <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;">
-      <div style="font-size:12px;font-weight:700;margin-bottom:10px;">📊 Trefferquote pro Kategorie · 25-Jahre-Backtest</div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:10px;">📊 Swing-Trefferquote pro Kategorie · Kern-Universum (25J)</div>
       <div style="height:240px;"><canvas id="slWrChart"></canvas></div>
-      <div style="font-size:10px;color:var(--text-2);margin-top:6px;">Historischer Backtest (point-in-time, ~25 Jahre, alle Assets) auf Basis der <b>Makro-Kern-Faktoren mit echter Historie</b> (Dollar · Zinsen · Zinskurve · Inflation · Arbeitsmarkt · Risk · Rohstoffe) — <b>nicht alle 175</b> (Geopolitik/Positionierung u.a. existieren historisch nicht). Anteil korrekter Bias-Richtung vs. Folge-Return. 50% = Zufall. Die volle 175-Faktor-Bias wird vom Live-Tracker geprüft.</div>
+      <div style="font-size:10px;color:var(--text-2);margin-top:6px;">Gleiche Basis wie die Kacheln unten: Bias-Richtung trifft <b>bis zum jeweiligen Horizont</b> (30T/60T/90T), Kern-Universum (handelbare Einzel-Assets + USD-Majors), point-in-time über ~25 Jahre, out-of-sample bestätigt. 50% = Zufall. FX am stärksten, Energie am schwächsten.</div>
     </div>
     <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
@@ -7653,7 +7653,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
         { label:'90T', data:mk('90'), backgroundColor:'#22c55e' }
       ]},
       options:{ responsive:true, maintainAspectRatio:false,
-        scales:{ y:{ min:30, max:70, ticks:{color:'#9ca3af',callback:v=>v+'%'}, grid:{color:'rgba(255,255,255,0.06)'} },
+        scales:{ y:{ min:30, max:80, ticks:{color:'#9ca3af',callback:v=>v+'%'}, grid:{color:'rgba(255,255,255,0.06)'} },
           x:{ ticks:{color:'#9ca3af'}, grid:{display:false} } },
         plugins:{ legend:{labels:{color:'#cbd5e1',boxWidth:12}},
           annotation:false,
@@ -7759,7 +7759,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     let r = null;
     try { r = window.MACRO_WINRATE && window.MACRO_WINRATE.compute(); } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
     if (!r) { try { r = JSON.parse(localStorage.getItem('macro_winrate_v1')); } catch(e) {} }
-    renderWrChart(BACKTEST_WR.byCat);
+    renderWrChart(SWING_BYCAT);
     if (r) { renderBadge(r); renderStats(r); renderSelectivity(r); }
     else { renderBadge({}); renderStats({ readiness:{real:0} }); }
     const f = (window.MACRO && window.MACRO.factors) || null;
@@ -7892,6 +7892,9 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   // ===== Richtungs-Sicherheit 0–100 pro Asset (kalibriert an 25J, PRO HORIZONT) =====
   // Richtung trifft BIS zum jeweiligen Horizont (30T≈1M, 60T≈2M, 90T≈3M).
   const SWING_H = {'FX':{'30':60,'60':73,'90':73},'INDEX':{'30':56,'60':66,'90':69},'METAL':{'30':56,'60':63,'90':61},'ENERGY':{'30':50,'60':55,'90':62},'AGRI':{'30':54,'60':66,'90':72},'CRYPTO':{'30':52,'60':57,'90':67}};
+  // Chart-Daten = dieselbe Swing-Kern-Basis wie die Kacheln (w=Prozent, n=100 → wrPct gibt Prozent)
+  const SWING_BYCAT = {};
+  Object.keys(SWING_H).forEach(c => { SWING_BYCAT[c] = {'30':{w:SWING_H[c]['30'],n:100},'60':{w:SWING_H[c]['60'],n:100},'90':{w:SWING_H[c]['90'],n:100}}; });
   let dcHorizon = '90';
   window.__dcSetHz = function(h){ dcHorizon = h; try{ renderDirConfidence(); }catch(e){} };
   function dcCat(a){
