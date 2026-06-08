@@ -7639,7 +7639,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       `<span style="opacity:0.85;">Daneben sammelt der Terminal aktuell <b>${real}</b> echte Live-Snapshots als zusätzlichen Live-Cross-Check (siehe Selektivität unten) — der wächst mit der Laufzeit.</span>`;
   }
   function renderWrChart(byCat){
-    const cats = ['FX','INDEX','METAL','ENERGY','AGRI','CRYPTO'];
+    const cats = ['GESAMT','FX','INDEX','METAL','ENERGY','AGRI','CRYPTO'];
     const labels = cats.filter(c => byCat && byCat[c]);
     const mk = h => labels.map(c => wrPct(byCat[c][h]));
     if (typeof Chart === 'undefined') return;
@@ -7895,6 +7895,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   // Chart-Daten = dieselbe Swing-Kern-Basis wie die Kacheln (w=Prozent, n=100 → wrPct gibt Prozent)
   const SWING_BYCAT = {};
   Object.keys(SWING_H).forEach(c => { SWING_BYCAT[c] = {'30':{w:SWING_H[c]['30'],n:100},'60':{w:SWING_H[c]['60'],n:100},'90':{w:SWING_H[c]['90'],n:100}}; });
+  SWING_BYCAT['GESAMT'] = SWING_TOTAL;   // GESAMT-Balken = exakt die Kachel-Werte (55,7 / 66,1 / 69,3)
   let dcHorizon = '90';
   window.__dcSetHz = function(h){ dcHorizon = h; try{ renderDirConfidence(); }catch(e){} };
   function dcCat(a){
