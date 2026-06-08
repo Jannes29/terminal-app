@@ -7915,9 +7915,8 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     if(!cs || !Object.keys(cs).length){ host.innerHTML='<span style="font-size:11px;color:var(--text-2);">Lädt… (Engine berechnet gerade die Bias)</span>'; return; }
     const rows=[];
     for(const a in cs){ const b=cs[a]; if(b==null||!isFinite(b)) continue; const cat=dcCat(a); if(!cat) continue;
-      const base=(SWING_H[cat]&&SWING_H[cat][dcHorizon])||60; const conv=Math.min(1,Math.abs(b)/0.6);
-      // an der echten Kategorie-Quote verankert (= Balkenwert), Konviktion moduliert nur leicht (±8)
-      const conf=Math.max(50,Math.min(85,Math.round(base+(conv-0.5)*16)));
+      // EXAKT die Kategorie-Quote des Horizonts = identisch zum Balken im Chart. Unterschied pro Asset = nur Richtung.
+      const conf=Math.round((SWING_H[cat]&&SWING_H[cat][dcHorizon])||60);
       rows.push({a, dir:(b>0?'LONG':'SHORT'), conf}); }
     if(!rows.length){ host.innerHTML='<span style="font-size:11px;color:var(--text-2);">Keine Bias-Werte verfügbar.</span>'; return; }
     rows.sort((x,y)=>y.conf-x.conf);
