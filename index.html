@@ -7600,6 +7600,19 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     <div id="slStats" style="display:flex;gap:14px;flex-wrap:wrap;">—</div>
   </div>
   <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
+    <div style="font-size:12px;font-weight:700;margin-bottom:4px;">💰 Erwartungswert &amp; CRV pro Horizont · was bringt es wirklich?</div>
+    <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">Nicht die Trefferquote entscheidet über Gewinn, sondern der <b>Erwartungswert</b> (WR × Ø-Gewinn − Verlustrate × Ø-Verlust). Hold-to-Horizon, 25 Jahre, Kern-Universum. Positiv = profitabel.</div>
+    <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:10.5px;min-width:520px;">
+      <tr style="color:var(--text-2);text-align:left;"><th style="padding:3px 6px;">Horizont</th><th>WR</th><th>Ø-Win</th><th>Ø-Loss</th><th>CRV</th><th>Erwartung/Trade</th><th>Profit-Faktor</th></tr>
+      <tr style="border-top:1px solid var(--line);"><td style="padding:4px 6px;font-weight:600;">30T (alle)</td><td>57%</td><td style="color:#22c55e;">+6,3%</td><td style="color:#ef4444;">−7,3%</td><td>0,86</td><td style="color:#22c55e;font-weight:700;">+0,37% ✓</td><td>1,12</td></tr>
+      <tr style="border-top:1px solid var(--line);"><td style="padding:4px 6px;font-weight:600;">60T (alle)</td><td>53%</td><td style="color:#22c55e;">+9,0%</td><td style="color:#ef4444;">−10,6%</td><td>0,85</td><td style="color:#fbbf24;font-weight:700;">−0,13%</td><td>0,97</td></tr>
+      <tr style="border-top:1px solid var(--line);"><td style="padding:4px 6px;font-weight:600;">90T (alle)</td><td>51%</td><td style="color:#22c55e;">+11,9%</td><td style="color:#ef4444;">−15,6%</td><td>0,76</td><td style="color:#ef4444;font-weight:700;">−1,54% ✗</td><td>0,80</td></tr>
+      <tr style="border-top:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.08);"><td style="padding:4px 6px;font-weight:700;">⭐ A+ 30T (Top-Konv.)</td><td style="font-weight:700;">64%</td><td style="color:#22c55e;">+7,3%</td><td style="color:#ef4444;">−10,3%</td><td>0,71</td><td style="color:#22c55e;font-weight:800;">+1,05% ✓</td><td style="font-weight:700;">1,29</td></tr>
+      <tr style="border-top:1px solid var(--line);"><td style="padding:4px 6px;">A+ 90T</td><td>58%</td><td style="color:#22c55e;">+12,1%</td><td style="color:#ef4444;">−30,1%</td><td>0,40</td><td style="color:#ef4444;font-weight:700;">−5,77% ✗</td><td>0,55</td></tr>
+    </table></div>
+    <div style="font-size:9.5px;color:var(--text-2);margin-top:7px;line-height:1.5;"><b>Befund:</b> Profitabel ist <b style="color:#22c55e;">nur 30T — am besten ⭐A+ 30T (Profit-Faktor 1,29)</b>. 60/90T verlieren trotz okayer WR, weil die Verlierer überproportional groß werden. <b>Wichtig:</b> Das ist <i>ohne Stop</i> (ungünstigster Fall) — mit deinem eigenen Stop/Exit verbessern sich die langen Horizonte deutlich, weil Stops die großen Verlierer kappen. Arbeitsmarkt-Faktor in dieser Rechnung ausgelassen (Quelle kurz down, vernachlässigbar — ist ohnehin Rauschen).</div>
+  </div>
+  <div style="background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
     <div style="font-size:12px;font-weight:700;margin-bottom:4px;">✅ Realer Edge-Test · aus deinem Trade-Journal</div>
     <div style="font-size:10px;color:var(--text-2);margin-bottom:10px;">Bringt das Befolgen der Strategie bei deinen echten Trades mehr? (Mit-Bias vs. Gegen-Bias)</div>
     <div id="slRealEdge">—</div>
@@ -11282,7 +11295,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     const now = Date.now();
     let loaded = 0, failed = 0, cached = 0;
     try {
-      const batch = 3;
+      const batch = 2;   // sanfter zu FRED → höhere Erfolgsquote pro Lauf (weniger Rate-Limit)
       for (let i = 0; i < FRED_SERIES.length; i += batch) {
         const chunk = FRED_SERIES.slice(i, i + batch);
         await Promise.all(chunk.map(async s => {
@@ -11307,8 +11320,8 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
         saveCache(cache);
         const active = document.querySelector('.fund-tab.active');
         if (active) renderTab(active.dataset.tab);
-        // Throttle: avoid proxy rate-limit
-        await new Promise(r => setTimeout(r, 250));
+        // Throttle: avoid proxy rate-limit (sanfter → FRED blockt seltener)
+        await new Promise(r => setTimeout(r, 600));
       }
     } finally {
       btn.textContent = '🔄 REFRESH ALL'; btn.disabled = false;
@@ -17600,6 +17613,10 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     }
     // Aliases
     s.BRENT = s.WTI;
+    // Equity-Index-Aggregat (Klassen-Bias „Equity-Idx") = Mittel der vier Index-Scores.
+    // Fehlte im V2-Faktor-Modell → Panel zeigte „—". Jetzt sauber befüllt.
+    { const eqs = [s.NAS100, s.SPX500, s.GER40, s.FTSE].filter(v => v != null && isFinite(v));
+      s.EQUITY = eqs.length ? eqs.reduce((a,b) => a+b, 0) / eqs.length : 0; }
     // Platin/Palladium: kein eigener Treibersatz → sinnvoller Proxy aus Industrie-Nachfrage (Kupfer) + Edelmetall-Beta (Gold)
     s.XPT = Math.max(-1, Math.min(1, (s.XCU!=null?s.XCU:0)*0.6 + (s.XAU!=null?s.XAU:0)*0.2));
     s.XPD = s.XPT;
