@@ -2820,7 +2820,7 @@
           {name:'Fed', series:'FEDFUNDS', desc:'Fed Funds Effective Rate (monthly)'},
           {name:'BoE', series:'IR3TIB01GBM156N', desc:'UK Interbank 3M (BoE-Proxy, monthly)'},
           {name:'ECB', series:'IR3TIB01EZM156N', desc:'Euro Interbank 3M (ECB-Proxy, monthly)'},
-          {name:'BoJ', series:'IRSTCB01JPM156N', desc:'BoJ Policy Rate (monthly)'},
+          {name:'BoJ', series:'IR3TIB01JPM156N', desc:'JP Interbank 3M (BoJ-Proxy, monthly)'},
           {name:'SNB', series:'IR3TIB01CHM156N', desc:'CH Interbank 3M (proxy, monthly)'},
           {name:'RBA', series:'IR3TIB01AUM156N', desc:'AU Interbank 3M (proxy, monthly)'},
           {name:'RBNZ',series:'IR3TIB01NZM156N', desc:'NZ Interbank 3M (proxy, monthly)'}
@@ -2839,16 +2839,16 @@
           return null;
         }
         async function fetchText(series) {
-          // 1) Proxies mit begrenztem Zeitraum (cosd) → kleine Datei, schnell. Mit Timeout (kein Hängen!).
+          // 1) Eigener Worker ZUERST (zuverlässig für monatliche Serien, keine IP-Drosselung wie bei den Proxies).
+          const wtxt = await fetchTO('https://kayser-data.mehmedkayser.workers.dev/?fred=' + encodeURIComponent(series), 8000);
+          if (wtxt && wtxt.includes(',') && wtxt.length > 30 && !/FREDSTATUS|DOCTYPE/.test(wtxt)) return wtxt;
+          // 2) Fallback: Proxies mit begrenztem Zeitraum (cosd) → kleine Datei, mit Timeout (kein Hängen!).
           const cosd = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 2); return d.toISOString().slice(0,10); })();
           const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${series}&cosd=${cosd}`;
           for (const p of PROXIES) {
             const t = await fetchTO(p(url), 8000);
             if (t && t.includes(',') && t.length > 30 && !/FREDSTATUS|DOCTYPE|Not allowed|<html/i.test(t)) return t;
           }
-          // 2) Fallback: eigener Worker (zuverlässig für monatliche Serien, keine IP-Drosselung)
-          const wtxt = await fetchTO('https://kayser-data.mehmedkayser.workers.dev/?fred=' + encodeURIComponent(series), 7000);
-          if (wtxt && wtxt.includes(',') && wtxt.length > 30 && !/FREDSTATUS|DOCTYPE/.test(wtxt)) return wtxt;
           return null;
         }
         async function fetchRate(series) {
