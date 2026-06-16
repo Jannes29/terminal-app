@@ -3917,7 +3917,7 @@
               if(b) b.innerHTML='<div style="opacity:.7;font-size:11px;">Live-Geo-Feed bereit, aber die Worker-Route <code>?gdelt=</code> ist noch nicht aktiviert.<br>Einmalig im Cloudflare-Worker hinterlegen (Snippet liegt bereit), dann erscheinen hier automatisch tagesaktuelle Schlagzeilen zu Iran/Nahost, Öl, Fed, China, Ukraine und Zöllen.</div>';
               break;
             }
-            await new Promise(r=>setTimeout(r,800));
+            await new Promise(r=>setTimeout(r,5500)); // GDELT-Limit: 1 Abruf/5s respektieren (nur beim Kaltstart, Cache überspringt)
           }
           try{ window.MACRO_GEO_LIVE=cache; }catch(e){}
         }
