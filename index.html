@@ -13027,14 +13027,22 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
             'CC': ['Westafrika ~70% (Elfenbeinküste/Ghana)','Strukturelle Unterinvestitionen','El-Niño-Sensitivität · Schwarz-Pod-Krankheit'],
             'CT': ['Xinjiang-Sanktionen (~20% globaler Anteil)','Polyester-Substitutions-Trend','US/China/Indien-Anbauflächen']
           };
-          // Always-on global events
-          const GLOBAL_HOT = [
-            '⚔️ Russland-Ukraine (Jahr 4+) · EU-Sanktions-Paket 14 · $50B G7-Loan',
-            '⚔️ Israel-Iran-Spannungen nach April-2024-Direktschlag · Hisbollah-Nordfront',
-            '⚔️ China-Taiwan: Lai-Regierung · PLA-Quartals-Übungen · 60% Tariffe geplant',
-            '🏦 Fed-Pivot-Pfad · ECB im Cut-Modus seit April · BoJ im Hike-Modus (Spaltung)',
-            '🏦 Trump-2.0-Politik: Tariffe · Tax-Cuts-Extension · QT-Tapering'
-          ];
+          // Live-Geo aus dem keyless GDELT-Feed (window.MACRO_GEO_LIVE). Fallback: neutraler Verweis
+          // statt stale-hardcodierter Specifics, damit nie etwas Gegenteiliges/Veraltetes erscheint.
+          const GLOBAL_HOT = (function(){
+            const G = (typeof window !== 'undefined' && window.MACRO_GEO_LIVE) || {};
+            const line = (k, emoji, fb) => {
+              const c = G[k];
+              return (c && c.title) ? (emoji + ' ' + String(c.title).slice(0, 95) + (c.src ? ' · ' + c.src : '')) : fb;
+            };
+            return [
+              line('Ukraine / RU', '⚔️', '⚔️ Russland-Ukraine — aktuelle Lage siehe Live-Geo-Panel'),
+              line('Nahost / Iran', '🌍', '🌍 Nahost/Iran — aktuelle Lage siehe Live-Geo-Panel'),
+              line('China', '🌏', '🌏 China/Taiwan — aktuelle Lage siehe Live-Geo-Panel'),
+              line('Fed / Zinsen', '🏦', '🏦 Fed/Zinsen — aktuelle Lage siehe Live-Geo-Panel'),
+              line('Handel / Zölle', '🏛️', '🏛️ Handel/Zölle — aktuelle Lage siehe Live-Geo-Panel')
+            ];
+          })();
           const symKw = HOT[sym];
           if (isFxPair && !symKw) {
             const bk = HOT[base] || [];
@@ -13835,14 +13843,16 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
             } catch(e) { return '— live'; }
           };
           // ⚠️ Evergreen-Headlines — keine stalen Spezifika, Live-Daten kommen aus FRED-Panel.
+          // Live-Schlagzeile aus dem keyless GDELT-Feed (window.MACRO_GEO_LIVE), wenn vorhanden:
+          const geoLive = (k) => { try { const c = (window.MACRO_GEO_LIVE||{})[k]; return (c && c.title) ? ` <span class="pos">Live:</span> ${String(c.title).slice(0,110)}${c.src?' ('+c.src+')':''}` : ''; } catch(e) { return ''; } };
           // GEOPOLITIK
           const ukraineImpact = isEnergy ? ' Auswirkung: Brent-Schwarzmeer-Routen + LNG-Versorgung EU.' : isEUR ? ' Eurozone-Impact: Energiepreis + Verteidigungs-Spending + Sanktions-Compliance.' : isAgri ? ' Agri-Impact: Russland+Ukraine ~25% Weizen-Exporte, Schwarzmeer-Logistik.' : isUSD ? ' USD profitiert als Reservewährung in Stress-Phasen.' : '';
-          headlines.push({ cat:'⚔️ UKRAINE', txt:`<b>Strukturell:</b> Sanktions-Pakete, Energie-Versorgung, Frozen-Asset-Mechanik, Schwarzmeer-Logistik. Live-Tavily-Score: <b>${(window.MACRO?.sentiment?.GEO_UKRAINE?.score ?? 'n/a')}</b>.${ukraineImpact}` });
+          headlines.push({ cat:'⚔️ UKRAINE', txt:`<b>Strukturell:</b> Sanktions-Pakete, Energie-Versorgung, Frozen-Asset-Mechanik, Schwarzmeer-Logistik.${ukraineImpact}${geoLive('Ukraine / RU')}` });
           const midEastImpact = isEnergy ? ' Brent-Risiko-Premium eingepreist, Strait-of-Hormuz = Tail-Risk.' : sym === 'XAU' ? ' Safe-Haven-Bid für Gold in Krisenphasen.' : isUSD ? ' Risk-Off-Flows in USD.' : '';
-          headlines.push({ cat:'⚔️ NAHOST', txt:`<b>Strukturell:</b> Iran/Israel-Eskalation, Houthi/Rotes Meer, Hisbollah-Risiko, Saudi-Iran-Rapprochement. Live-Tavily-Score: <b>${(window.MACRO?.sentiment?.GEO_MIDEAST?.score ?? 'n/a')}</b>.${midEastImpact}` });
+          headlines.push({ cat:'🌍 NAHOST', txt:`<b>Strukturell:</b> Iran/Israel-Lage, Houthi/Rotes Meer, Strait-of-Hormuz, Saudi-Iran-Dynamik.${midEastImpact}${geoLive('Nahost / Iran')}` });
           if (isChina || isUSD || isJPY || isAUD) {
             const taiwanImpact = isJPY ? ' Japan: Seerouten + TSMC-Supply-Chain.' : isAUD ? ' Australien: AUKUS-Partner.' : isUSD ? ' US: CHIPS-Act + Verteidigungs-Spending.' : ' China-Eskalation → A-Shares + AUD risiko.';
-            headlines.push({ cat:'⚔️ TAIWAN', txt:`<b>Strukturell:</b> PLA-Übungen, Chip-Export-Restriktionen, Tariff-Eskalation. Live-Tavily-Score: <b>${(window.MACRO?.sentiment?.GEO_CHINA?.score ?? 'n/a')}</b>.${taiwanImpact}` });
+            headlines.push({ cat:'🌏 CHINA/TAIWAN', txt:`<b>Strukturell:</b> PLA-Übungen, Chip-Export-Restriktionen, Tariff-Dynamik.${taiwanImpact}${geoLive('China')}` });
           }
           // TRADE/FISCAL — evergreen
           if (isUSD || isChina || isEUR) headlines.push({ cat:'🌐 TRADE/TARIFFE', txt:'<b>Strukturell:</b> Tariff-Politik wirkt auf CPI, Cross-Asset-Korrelationen, Yuan-Steuerung. Importeure-Vorzieh-Effekte verzerren Monatsdaten.' });
@@ -17882,6 +17892,14 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   let _sentimentFetching = false;
   async function refreshSentiment() {
     if (_sentimentFetching) return;
+    // ── Tavily-Drossel ──────────────────────────────────────────────
+    // Echte Abrufe höchstens alle 2h (cache-basiert, greift auch bei Reloads).
+    // ~20 Themen × 12 Zyklen/Tag ≈ 240/Tag ≈ 7.200/Monat << 13.000 Credit-Budget (13 Keys × 1.000)
+    // → die Keys halten einen ganzen Monat mit Puffer.
+    try {
+      const _c = localStorage.getItem('macro_sentiment_v1');
+      if (_c) { const _o = JSON.parse(_c); if (_o && _o.ts && (Date.now() - _o.ts) < 2 * 3600 * 1000) { return; } }
+    } catch(e) {}
     _sentimentFetching = true;
     try {
       const sent = await fetchMacroSentiment();
@@ -17951,7 +17969,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   });
 
   setInterval(refreshMacro, 5 * 60 * 1000);        // 5min — Preis-/Zinsdaten
-  setInterval(refreshSentiment, 15 * 60 * 1000);   // 15min — sentiment (rate-limited Tavily)
+  setInterval(refreshSentiment, 2 * 60 * 60 * 1000);   // 2h — Tavily-Drossel: 13 Keys halten >1 Monat (~7.2k/Monat << 13k Budget)
 })();
 </script>
 
