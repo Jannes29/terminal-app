@@ -3875,6 +3875,17 @@
         const fmtDate=s=>(s&&s.length>=8)?(s.slice(6,8)+'.'+s.slice(4,6)+'.'):'';
         const WORKER='https://kayser-data.mehmedkayser.workers.dev';
         let ROUTE_OK=null; // null=unbekannt, false=Worker-Route fehlt noch
+        // Geo-Risk-Lexik: Eskalation → +, Deeskalation/Frieden → −.
+        // Passt zur Faktor-Konvention geo_* (positiv = Eskalation/Risk-off). So wirkt z.B. ein Iran-Deal korrekt risk-on.
+        const RISK_UP=['war','strike','attack','escalat','tension','conflict','crisis','threat','sanction','missile','invasion','clash','kill','violence','nuclear','hostil','retaliat','warning','fear'];
+        const RISK_DN=['peace','ceasefire','cease-fire','truce','deal','agreement','talks','de-escalat','diplomac','accord','resolution','withdraw','calm','ease','negotiat'];
+        function riskScore(arts){
+          let up=0,dn=0;
+          for(const a of (arts||[])){ const t=((a.title||'')+' '+(a.domain||'')).toLowerCase();
+            for(const w of RISK_UP) if(t.includes(w)) up++;
+            for(const w of RISK_DN) if(t.includes(w)) dn++; }
+          const tot=up+dn; return tot ? Math.max(-1,Math.min(1,(up-dn)/tot)) : null;
+        }
         async function fetchTheme(t){
           // Robust über den eigenen Worker (direkter GDELT-Abruf wird im Browser von CORS/Netz geblockt).
           const url=WORKER+'/?gdelt='+encodeURIComponent(t.q);
@@ -3884,9 +3895,10 @@
             if(!r.ok || !txt || txt[0]!=='{'){ ROUTE_OK=false; return null; }
             const d=JSON.parse(txt);
             if(d.error){ ROUTE_OK=false; return null; }
-            const art=(d.articles||[])[0]; if(!art||!art.title){ ROUTE_OK=true; return null; }
+            const arts=d.articles||[];
+            const art=arts[0]; if(!art||!art.title){ ROUTE_OK=true; return null; }
             ROUTE_OK=true;
-            return { title:art.title, url:art.url||'', date:art.seendate||'', src:art.domain||'' };
+            return { title:art.title, url:art.url||'', date:art.seendate||'', src:art.domain||'', risk:riskScore(arts), n:arts.length };
           }catch(e){ ROUTE_OK=false; return null; }
         }
         function render(cache){
@@ -3894,8 +3906,9 @@
           body.innerHTML = THEMES.map(t=>{
             const c=cache[t.k];
             if(!c||!c.title) return `<div style="margin:6px 0;opacity:.55;"><b>${t.k}</b> <span style="font-size:9px;color:var(--text-2);">(${t.a})</span><br><span style="font-size:10px;">— wird geladen —</span></div>`;
+            const rk=(typeof c.risk==='number')?`<span style="font-size:9px;color:${c.risk>0.15?'#f87171':c.risk<-0.15?'#4ade80':'var(--text-2)'};" title="Geo-Risk: + = Eskalation/Risk-off, − = Deeskalation. Fließt gedeckelt in die Bias.">· Risk ${c.risk>0?'+':''}${c.risk.toFixed(2)}</span>`:'';
             return `<div style="margin:7px 0;border-left:2px solid rgba(34,211,238,0.45);padding-left:9px;">`+
-                   `<b>${t.k}</b> <span style="font-size:9px;color:var(--text-2);">(${t.a})</span> · <span style="font-size:9px;color:#22d3ee;">${fmtDate(c.date)} ${esc((c.src||'').slice(0,22))}</span><br>`+
+                   `<b>${t.k}</b> <span style="font-size:9px;color:var(--text-2);">(${t.a})</span> · <span style="font-size:9px;color:#22d3ee;">${fmtDate(c.date)} ${esc((c.src||'').slice(0,22))}</span> ${rk}<br>`+
                    `<a href="${esc(c.url)}" target="_blank" rel="noopener" style="color:var(--text-1);text-decoration:none;font-size:11px;">${esc(c.title).slice(0,130)}</a></div>`;
           }).join('');
           const m=document.getElementById('geoLiveMeta');
@@ -3920,6 +3933,16 @@
             await new Promise(r=>setTimeout(r,5500)); // GDELT-Limit: 1 Abruf/5s respektieren (nur beim Kaltstart, Cache überspringt)
           }
           try{ window.MACRO_GEO_LIVE=cache; }catch(e){}
+          // ── Geo-Risk keyless in die Bias einspeisen (füllt die Tavily-Felder, gedeckelt [-1,1]) ──
+          // Konvention geo_*: positiv = Eskalation/Risk-off. Iran-Deal → RISK_DN-Wörter → negativ → risk-on.
+          try{
+            const MAP={ 'Nahost / Iran':'GEO_MIDEAST', 'China':'GEO_CHINA', 'Ukraine / RU':'GEO_UKRAINE' };
+            if(!window.MACRO) window.MACRO={};
+            if(!window.MACRO.sentiment) window.MACRO.sentiment={};
+            let any=false;
+            for(const k in MAP){ const c=cache[k]; if(c && typeof c.risk==='number'){ window.MACRO.sentiment[MAP[k]]={ score:c.risk, src:'GDELT', articleCount:c.n||0, summary:(c.title||'').slice(0,200) }; any=true; } }
+            if(any) window.dispatchEvent(new CustomEvent('geoUpdate'));
+          }catch(e){}
         }
         if(document.readyState!=='loading') setTimeout(refresh,4500);
         else document.addEventListener('DOMContentLoaded',()=>setTimeout(refresh,4500));
@@ -11237,10 +11260,8 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       } catch(e) { /* keine Daten */ }
       return null;
     }
-    // Große Tagesserien: Proxy+cosd zuerst (kleine Datei). Alle übrigen: Worker zuerst (zuverlässig).
-    if (FRED_BIG_DAILY.has(seriesId)) {
-      return (await viaProxy()) || (await viaWorker());
-    }
+    // Worker zuerst für ALLE Serien — der Worker nutzt jetzt die offizielle FRED-API (zuverlässig,
+    // 3-Jahres-Fenster = kleine Antwort auch für Tagesserien). Proxy nur noch als Fallback.
     return (await viaWorker()) || (await viaProxy());
   }
   function parseCsv(txt) {
