@@ -4631,7 +4631,7 @@ setTimeout(() => window.renderMacroDashboard(), 800);
 <div class="section" id="econDept">
   <div class="section-head">
     <h2>12C · <em>Wirtschafts-Abteilung</em> · Makro je Land + Aktien-Fundamental<span class="powers-badge">Live · erklärt</span></h2>
-    <div class="meta">G10 + China · FRED · OECD · Notenbanken · TradingView-Fundamentals</div>
+    <div class="meta">G10 + China · FRED · OECD · Notenbanken · TradingView-Fundamentals · Karten anklickbar für Experten-Analyse</div>
   </div>
   <div style="display:flex;gap:8px;margin:6px 0 12px;flex-wrap:wrap;">
     <button class="econ-tab active" data-etab="laender" style="background:rgba(34,211,238,0.18);color:#67e8f9;border:1px solid rgba(34,211,238,0.4);border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;">🌍 Länder-Makro</button>
@@ -4641,7 +4641,7 @@ setTimeout(() => window.renderMacroDashboard(), 800);
   <div id="econLaender">
     <div class="panel" style="margin-bottom:10px;">
       <div style="padding:10px 12px;font-size:11.5px;line-height:1.6;color:var(--text-2);">
-        <b style="color:var(--text-1);">Wie liest man das?</b> Pro Land siehst du die vier Kräfte, die eine Währung treiben: <b>Inflation</b> (über 2 % → Notenbank eher restriktiv → Währung tendenziell stark), <b>Arbeitsmarkt</b> (niedrige Arbeitslosigkeit = robust), <b>Frühindikator</b> (über 100 = Aufschwung) und <b>Leitzins</b> (höher + real positiv = Kapital fließt zu, stützt die Währung). Darunter steht in Klartext, was die Lage bedeutet. Alle Werte live aus FRED/OECD/Notenbanken.
+        <b style="color:var(--text-1);">Wie liest man das?</b> Pro Land siehst du die Kräfte, die eine Währung treiben: <b>Inflation</b> (über 2 % → Notenbank eher restriktiv → Währung tendenziell stark), <b>Arbeitsmarkt</b> (niedrige Arbeitslosigkeit = robust), <b>Frühindikator</b> (über 100 = Aufschwung) und <b>Leitzins/Realzins</b> (höher + real positiv = Kapital fließt zu). <b style="color:#67e8f9;">Klick auf eine Karte</b> für die ausführliche Experten-Analyse mit Zinsdifferenz, Geldpolitik-Pfad und Währungs-Implikation. Alle Werte live aus FRED/OECD/Notenbanken.
       </div>
     </div>
     <div id="econCountryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;">Lädt Wirtschaftsdaten…</div>
@@ -4650,7 +4650,7 @@ setTimeout(() => window.renderMacroDashboard(), 800);
   <div id="econAktien" style="display:none;">
     <div class="panel" style="margin-bottom:10px;">
       <div style="padding:10px 12px;font-size:11.5px;line-height:1.6;color:var(--text-2);">
-        <b style="color:var(--text-1);">Fundamentalanalyse:</b> <b>KGV</b> (Kurs/Gewinn — niedrig = günstig bewertet, hoch = teuer/viel Wachstum erwartet), <b>Marge</b> (wie profitabel), <b>ROE</b> (Eigenkapitalrendite), <b>Verschuldung</b> (Debt/Equity — über 1,5 = hoch gehebelt) und der <b>Analystenkonsens</b>. Tippe einen Ticker ein oder nutze die Vorauswahl.
+        <b style="color:var(--text-1);">Fundamentalanalyse:</b> <b>KGV</b> (Kurs/Gewinn — niedrig = günstig, hoch = teuer/viel Wachstum erwartet), <b>Marge</b> (Profitabilität), <b>ROE</b> (Eigenkapitalrendite), <b>Verschuldung</b> (D/E über 1,5 = hoch gehebelt) und der <b>Analystenkonsens</b>. Tippe einen Ticker ein oder nutze die Vorauswahl.
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
@@ -4661,14 +4661,16 @@ setTimeout(() => window.renderMacroDashboard(), 800);
     <div id="econStockGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;">Lädt Fundamentaldaten…</div>
   </div>
 </div>
+<div id="econModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.72);backdrop-filter:blur(3px);overflow-y:auto;padding:30px 16px;">
+  <div id="econModalInner" style="max-width:760px;margin:0 auto;background:var(--bg-1,#0e1420);border:1px solid var(--border,#243047);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.6);"></div>
+</div>
 <script>
 (function(){
   try {
     const WORKER='https://kayser-data.mehmedkayser.workers.dev';
-    const fmt=(v,d=2,suf='')=> (v==null||isNaN(v))?'—':(v>=0&&suf==='%'&&d===2?'':'')+(Number(v).toFixed(d))+suf;
+    const fmt=(v,d=2,suf='')=> (v==null||isNaN(v))?'—':(Number(v).toFixed(d))+suf;
     const col=(v,good,bad)=> v==null?'var(--text-2)':(v>=good?'#4ade80':v<=bad?'#f87171':'var(--amber)');
 
-    // ===== TAB-Umschaltung =====
     document.querySelectorAll('.econ-tab').forEach(b=>b.addEventListener('click',()=>{
       document.querySelectorAll('.econ-tab').forEach(x=>{x.classList.remove('active');x.style.background='rgba(255,255,255,0.05)';x.style.color='var(--text-2)';x.style.border='1px solid var(--border)';});
       b.classList.add('active');b.style.background='rgba(34,211,238,0.18)';b.style.color='#67e8f9';b.style.border='1px solid rgba(34,211,238,0.4)';
@@ -4680,78 +4682,180 @@ setTimeout(() => window.renderMacroDashboard(), 800);
 
     // ===== LÄNDER =====
     const COUNTRIES=[
-      {n:'USA',           flag:'🇺🇸', oecd:'USA',  cb:'Fed',  ccy:'USD'},
-      {n:'Eurozone',      flag:'🇪🇺', oecd:'EA20', cb:'ECB',  ccy:'EUR'},
-      {n:'Großbritannien',flag:'🇬🇧', oecd:'GBR',  cb:'BoE',  ccy:'GBP'},
-      {n:'Japan',         flag:'🇯🇵', oecd:'JPN',  cb:'BoJ',  ccy:'JPY'},
-      {n:'Schweiz',       flag:'🇨🇭', oecd:'CHE',  cb:'SNB',  ccy:'CHF'},
-      {n:'Kanada',        flag:'🇨🇦', oecd:'CAN',  cb:null,   ccy:'CAD'},
-      {n:'Australien',    flag:'🇦🇺', oecd:'AUS',  cb:'RBA',  ccy:'AUD'},
-      {n:'Neuseeland',    flag:'🇳🇿', oecd:'NZL',  cb:'RBNZ', ccy:'NZD'},
-      {n:'China',         flag:'🇨🇳', oecd:null,   cb:null,   ccy:'CNY'}
+      {n:'USA',           flag:'🇺🇸', oecd:'USA',  cb:'Fed',  ccy:'USD', y10:'IRLTLT01USM156N'},
+      {n:'Eurozone',      flag:'🇪🇺', oecd:'EA20', cb:'ECB',  ccy:'EUR', y10:'IRLTLT01EZM156N'},
+      {n:'Großbritannien',flag:'🇬🇧', oecd:'GBR',  cb:'BoE',  ccy:'GBP', y10:'IRLTLT01GBM156N'},
+      {n:'Japan',         flag:'🇯🇵', oecd:'JPN',  cb:'BoJ',  ccy:'JPY', y10:'IRLTLT01JPM156N'},
+      {n:'Schweiz',       flag:'🇨🇭', oecd:'CHE',  cb:'SNB',  ccy:'CHF', y10:'IRLTLT01CHM156N'},
+      {n:'Kanada',        flag:'🇨🇦', oecd:'CAN',  cb:null,   ccy:'CAD', y10:'IRLTLT01CAM156N'},
+      {n:'Australien',    flag:'🇦🇺', oecd:'AUS',  cb:'RBA',  ccy:'AUD', y10:'IRLTLT01AUM156N'},
+      {n:'Neuseeland',    flag:'🇳🇿', oecd:'NZL',  cb:'RBNZ', ccy:'NZD', y10:'IRLTLT01NZM156N'},
+      {n:'China',         flag:'🇨🇳', oecd:null,   cb:null,   ccy:'CNY', y10:null}
     ];
-    let CHINA={cpi:null, rate:null};
+    const CBNAME={Fed:'Federal Reserve (Fed)',ECB:'Europäische Zentralbank (EZB)',BoE:'Bank of England (BoE)',BoJ:'Bank of Japan (BoJ)',SNB:'Schweizerische Nationalbank (SNB)',RBA:'Reserve Bank of Australia (RBA)',RBNZ:'Reserve Bank of New Zealand (RBNZ)'};
+    let CHINA={cpi:null};
+    const Y10={};       // FRED-Series-ID → letzter Wert
+    const DATA={};      // ccy → gesammelte Werte (für Modal)
 
-    function inflTxt(cp){ if(cp==null)return''; if(cp>=3.5)return'<b style="color:#f87171">deutlich über dem 2 %-Ziel</b> → die Notenbank steht unter Druck, die Zinsen hoch zu halten (hawkish), was die Währung tendenziell stützt.'; if(cp>=2.3)return'<b style="color:var(--amber)">leicht über Ziel</b> → die Notenbank bleibt vorsichtig.'; if(cp>=1.2)return'<b style="color:#4ade80">nahe dem 2 %-Ziel</b> → Preisstabilität, Spielraum für stabile Politik.'; return'<b style="color:#f87171">zu niedrig / Deflationsrisiko</b> → die Notenbank tendiert zu Zinssenkungen (dovish), was die Währung eher schwächt.'; }
-    function laborTxt(u){ if(u==null)return''; if(u<=4)return'sehr robust/eng'; if(u<=6)return'solide'; return'schwach'; }
-    function cliTxt(c){ if(c==null)return''; return c>=100?'über 100 → <b style="color:#4ade80">Aufschwung-Signal</b>':'unter 100 → <b style="color:#f87171">Abschwung-Signal</b>'; }
-
-    function verdict(c){
-      // c: {cp,unemp,cli,rate,ccy}
-      let score=0,n=0;
-      if(c.cp!=null){ score+= c.cp>=2.3?1:(c.cp<1.2?-1:0); n++; }
-      if(c.unemp!=null){ score+= c.unemp<=4.5?1:(c.unemp>6.5?-1:0); n++; }
-      if(c.cli!=null){ score+= c.cli>=100?1:-1; n++; }
-      if(c.rate!=null&&c.cp!=null){ score+= (c.rate-c.cp)>0.5?1:((c.rate-c.cp)<-0.5?-1:0); n++; } // realer Zins
-      if(n===0) return {t:'Zu wenig Daten',cl:'var(--text-2)'};
-      const s=score/n;
-      if(s>=0.5) return {t:c.ccy+' fundamental tendenziell STARK',cl:'#4ade80'};
-      if(s<=-0.5) return {t:c.ccy+' fundamental tendenziell SCHWACH',cl:'#f87171'};
-      return {t:c.ccy+' fundamental NEUTRAL/gemischt',cl:'var(--amber)'};
+    function gather(C){
+      const gO=window.getOecd||(()=>null); const gF=window.getFred||(()=>null); const cbR=window.CB_RATES||{};
+      let cp = C.oecd? gO(C.oecd,'CP') : CHINA.cpi;
+      let unemp = C.oecd? gO(C.oecd,'UNEMP') : null;
+      let cli = C.oecd? gO(C.oecd,'CLI') : null;
+      let conf = C.oecd? gO(C.oecd,'CONF') : null;
+      let retail = C.oecd? gO(C.oecd,'RETAIL') : null;
+      let m3 = C.oecd? gO(C.oecd,'M3') : null;
+      let rate = C.cb? cbR[C.cb] : null;
+      let y10 = C.y10? Y10[C.y10] : null;
+      if(C.oecd==='USA'){ if(cp==null)cp=gF('CPIAUCSL'); if(unemp==null)unemp=gF('UNRATE'); if(y10==null)y10=gF('DGS10'); }
+      const realR=(rate!=null&&cp!=null)?(rate-cp):null;
+      return {n:C.n,flag:C.flag,ccy:C.ccy,cb:C.cb,cp,unemp,cli,conf,retail,m3,rate,y10,realR};
     }
+    function verdict(d){
+      let s=0,n=0;
+      if(d.cp!=null){ s+= d.cp>=2.3?1:(d.cp<1.2?-1:0); n++; }
+      if(d.unemp!=null){ s+= d.unemp<=4.5?1:(d.unemp>6.5?-1:0); n++; }
+      if(d.cli!=null){ s+= d.cli>=100?1:-1; n++; }
+      if(d.realR!=null){ s+= d.realR>0.5?1:(d.realR<-0.5?-1:0); n++; }
+      if(n===0) return {t:'Zu wenig Daten',cl:'var(--text-2)',s:0};
+      const a=s/n;
+      if(a>=0.5) return {t:d.ccy+' tendenziell STARK',cl:'#4ade80',s:a};
+      if(a<=-0.5) return {t:d.ccy+' tendenziell SCHWACH',cl:'#f87171',s:a};
+      return {t:d.ccy+' NEUTRAL/gemischt',cl:'var(--amber)',s:a};
+    }
+
+    // ===== Experten-Analyse (datengetrieben) =====
+    function expert(d){
+      const usY = Y10['IRLTLT01USM156N'] || (window.getFred&&window.getFred('DGS10'));
+      const P=[];
+      // 1) Geldpolitik & Inflation
+      if(d.cp!=null || d.rate!=null){
+        let t='<b>Geldpolitik &amp; Inflation.</b> ';
+        if(d.rate!=null){ t+=`Die ${CBNAME[d.cb]||'Notenbank'} hält den Leitzins bei <b>${fmt(d.rate,2,' %')}</b>. `; }
+        if(d.cp!=null){
+          const tgt = d.cp>=3.5?'deutlich über':d.cp>=2.3?'leicht über':d.cp>=1.2?'nahe':'unter';
+          t+=`Die Inflation liegt bei <b>${fmt(d.cp,1,' %')}</b> und damit <b>${tgt}</b> dem 2-%-Ziel. `;
+          if(d.realR!=null){
+            t+=`Daraus ergibt sich ein realer Leitzins von <b>${fmt(d.realR,1,' %')}</b> — `;
+            t+= d.realR>1?'die Geldpolitik ist klar <b>restriktiv</b>: sie bremst Kreditnachfrage und Inflation aktiv und stützt tendenziell die Währung.':
+                d.realR>0?'die Politik ist <b>leicht restriktiv</b> bis neutral.':
+                'die Politik ist real noch <b>locker</b> (negativer Realzins), was Inflation laufen lässt und die Währung belastet.';
+          }
+          t+= d.cp>=3?' Solange die Inflation hartnäckig über Ziel bleibt, ist der Spielraum für Zinssenkungen begrenzt — eher währungspositiv.':
+              d.cp<1.2?' Die niedrige Inflation gibt der Notenbank Raum für Lockerungen, was die Währung tendenziell schwächt.':'';
+        }
+        P.push(t);
+      }
+      // 2) Konjunktur & Arbeitsmarkt
+      if(d.cli!=null || d.unemp!=null || d.retail!=null){
+        let t='<b>Konjunktur &amp; Arbeitsmarkt.</b> ';
+        if(d.cli!=null) t+=`Der Frühindikator (CLI) steht bei <b>${fmt(d.cli,1)}</b> — ${d.cli>=100?'über 100, das deutet auf <b>Aufschwung</b> in den kommenden 6–9 Monaten':'unter 100, das deutet auf <b>Abkühlung</b>'}. `;
+        if(d.unemp!=null){ const lab=d.unemp<=4?'sehr eng':d.unemp<=6?'solide':'schwach'; t+=`Die Arbeitslosenquote von <b>${fmt(d.unemp,1,' %')}</b> ist <b>${lab}</b>${d.unemp<=4.5?' — ein enger Arbeitsmarkt hält Lohn- und damit Inflationsdruck hoch':d.unemp>6.5?' — Spielraum für die Notenbank, eher dovish zu werden':''}. `; }
+        if(d.retail!=null) t+=`Der Einzelhandel ${d.retail>=0?'wächst':'schrumpft'} um <b>${fmt(d.retail,1,' %')}</b> (YoY) — der Konsum ${d.retail>=1?'trägt':d.retail>=0?'stagniert':'bremst'}. `;
+        if(d.m3!=null) t+=`Die Geldmenge M3 wächst ${fmt(d.m3,1,' %')} (YoY).`;
+        P.push(t);
+      }
+      // 3) Zinsdifferenz & Währung
+      {
+        let t='<b>Zinsdifferenz &amp; Währung.</b> ';
+        if(d.y10!=null){
+          t+=`Die 10-jährige Staatsanleihe rentiert mit <b>${fmt(d.y10,2,' %')}</b>`;
+          if(usY!=null && d.ccy!=='USD'){ const diff=d.y10-usY; const bp=Math.round(diff*100);
+            t+=` — das sind <b>${bp>=0?'+':''}${bp} Basispunkte ${bp>=0?'über':'unter'}</b> der US-Rendite (${fmt(usY,2,' %')}). `;
+            t+= bp>0?'Eine <b>positive</b> Zinsdifferenz macht die Währung im Carry attraktiv — Kapital fließt hierher, stützend.':
+                'Eine <b>negative</b> Zinsdifferenz verteuert das Halten der Währung im Carry — tendenziell belastend gegenüber dem USD.';
+          } else { t+='. '; }
+        } else if(d.ccy==='USD' && usY!=null){ t+=`Die 10-jährige US-Treasury rentiert mit <b>${fmt(usY,2,' %')}</b> und ist der globale Anker — höhere US-Realrenditen ziehen Kapital in den Dollar.`; }
+        const v=verdict(d);
+        t+=` <b>Fazit:</b> Aus Inflation, Arbeitsmarkt, Konjunktur und realem Zins ergibt sich <b style="color:${v.cl}">${v.t}</b>.`;
+        P.push(t);
+      }
+      // 4) Risiken/Ausblick
+      {
+        let t='<b>Risiken &amp; worauf zu achten ist.</b> ';
+        const risks=[];
+        if(d.cp!=null&&d.cp>=3) risks.push('ein erneuter Inflationsschub würde die Notenbank zu härteren Schritten zwingen (währungspositiv, aber wachstumsbelastend)');
+        if(d.cp!=null&&d.cp<1.2) risks.push('rutscht die Inflation weiter, drohen schnellere Zinssenkungen (währungsnegativ)');
+        if(d.unemp!=null&&d.unemp>6) risks.push('ein weiter steigender Arbeitslosenstand könnte die Notenbank zu Lockerungen drängen');
+        if(d.cli!=null&&d.cli<100) risks.push('der fallende Frühindikator signalisiert nachlassende Dynamik — Datenüberraschungen nach unten sind das Hauptrisiko');
+        if(d.realR!=null&&d.realR>1.5) risks.push('der hohe Realzins bremst die Wirtschaft mit Verzögerung — bei kippender Konjunktur kann die Notenbank schnell drehen');
+        t+= risks.length? risks.join('; ')+'.' : 'Die Lage ist ausgewogen; entscheidend sind die nächsten Inflations- und Arbeitsmarktdaten sowie die Notenbank-Kommunikation.';
+        t+=' <span style="opacity:.7">Hinweis: Dies ist eine datengetriebene Einordnung der aktuellen Lage, keine Anlageempfehlung.</span>';
+        P.push(t);
+      }
+      return P;
+    }
+
+    function openDetail(ccy){
+      const d=DATA[ccy]; if(!d) return;
+      const v=verdict(d);
+      const usY = Y10['IRLTLT01USM156N'] || (window.getFred&&window.getFred('DGS10'));
+      const ydiff = (d.y10!=null&&usY!=null&&ccy!=='USD')? (d.y10-usY) : null;
+      const dataRow=(l,val,c)=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><span style="color:var(--text-2);font-size:12px;">${l}</span><span style="font-weight:700;font-size:13px;color:${c||'var(--text-1)'};">${val}</span></div>`;
+      const paras=expert(d).map(p=>`<p style="margin:0 0 12px;font-size:12.5px;line-height:1.7;color:var(--text-1);">${p}</p>`).join('');
+      document.getElementById('econModalInner').innerHTML=`
+        <div style="position:sticky;top:0;background:var(--bg-1,#0e1420);padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0;">
+          <div><span style="font-size:20px;font-weight:800;">${d.flag} ${d.n}</span> <span style="font-size:13px;color:var(--text-2);">· ${d.ccy}</span></div>
+          <div style="display:flex;gap:14px;align-items:center;">
+            <span style="font-size:13px;font-weight:800;color:${v.cl};">${v.t}</span>
+            <button id="econModalClose" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);color:var(--text-1);border-radius:6px;width:30px;height:30px;font-size:16px;cursor:pointer;">✕</button>
+          </div>
+        </div>
+        <div style="padding:18px 20px;">
+          <div style="font-size:11px;letter-spacing:1px;color:var(--text-2);margin-bottom:6px;">LIVE-WIRTSCHAFTSDATEN</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;margin-bottom:18px;">
+            ${dataRow('Inflation (CPI YoY)', fmt(d.cp,1,' %'), col(d.cp==null?null:(2.3-Math.abs(d.cp-2)),0.5,-1))}
+            ${dataRow('Leitzins (Notenbank)', fmt(d.rate,2,' %'))}
+            ${dataRow('Arbeitslosenquote', fmt(d.unemp,1,' %'), col(d.unemp==null?null:(7-d.unemp),2,0))}
+            ${dataRow('Realzins (Zins−Infl.)', fmt(d.realR,1,' %'), col(d.realR,0.5,-0.5))}
+            ${dataRow('Frühindikator (CLI)', fmt(d.cli,1), col(d.cli,100,99.5))}
+            ${dataRow('10J-Staatsanleihe', fmt(d.y10,2,' %'))}
+            ${dataRow('Einzelhandel (YoY)', fmt(d.retail,1,' %'), col(d.retail,1,0))}
+            ${dataRow('Zinsdiff. vs. USA', ydiff==null?'—':((ydiff>=0?'+':'')+Math.round(ydiff*100)+' bp'), col(ydiff,0,-0.01))}
+            ${dataRow('Konsumklima', fmt(d.conf,0), col(d.conf,0,-20))}
+            ${dataRow('Geldmenge M3 (YoY)', fmt(d.m3,1,' %'))}
+          </div>
+          <div style="font-size:11px;letter-spacing:1px;color:var(--text-2);margin-bottom:8px;">📋 EXPERTEN-ANALYSE</div>
+          ${paras}
+        </div>`;
+      document.getElementById('econModal').style.display='block';
+      const cb=document.getElementById('econModalClose'); if(cb) cb.onclick=()=>{document.getElementById('econModal').style.display='none';};
+    }
+    const modalBg=document.getElementById('econModal');
+    if(modalBg) modalBg.addEventListener('click',e=>{ if(e.target===modalBg) modalBg.style.display='none'; });
 
     function renderCountries(){
       const grid=document.getElementById('econCountryGrid'); if(!grid) return;
-      const gO=window.getOecd||(()=>null); const gF=window.getFred||(()=>null); const cbR=window.CB_RATES||{};
       grid.innerHTML=COUNTRIES.map(C=>{
-        let cp = C.oecd? gO(C.oecd,'CP') : CHINA.cpi;
-        let unemp = C.oecd? gO(C.oecd,'UNEMP') : null;
-        let cli = C.oecd? gO(C.oecd,'CLI') : null;
-        let conf = C.oecd? gO(C.oecd,'CONF') : null;
-        let rate = C.cb? cbR[C.cb] : (C.ccy==='CNY'? CHINA.rate : null);
-        if(C.oecd==='USA'){ if(cp==null)cp=gF('CPIAUCSL'); if(unemp==null)unemp=gF('UNRATE'); }
-        const v=verdict({cp,unemp,cli,rate,ccy:C.ccy});
-        const realR = (rate!=null&&cp!=null)? (rate-cp) : null;
+        const d=gather(C); DATA[C.ccy]=d; const v=verdict(d);
         const row=(lbl,val,c)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="color:var(--text-2);font-size:11px;">${lbl}</span><span style="font-weight:700;font-size:12px;color:${c};">${val}</span></div>`;
-        return `<div class="panel" style="padding:0;overflow:hidden;">
+        return `<div class="panel econ-ccard" data-ccy="${C.ccy}" style="padding:0;overflow:hidden;cursor:pointer;transition:border-color .15s;" title="Klicken für Experten-Analyse">
           <div style="padding:9px 12px;background:rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:14px;font-weight:800;">${C.flag} ${C.n}</span>
             <span style="font-size:11px;font-weight:800;color:${v.cl};">${v.t}</span>
           </div>
           <div style="padding:8px 12px;">
-            ${row('Inflation (CPI YoY)', fmt(cp,1,' %'), col(cp==null?null:(2.3-Math.abs(cp-2)),0.5,-1))}
-            ${row('Arbeitslosenquote', fmt(unemp,1,' %'), col(unemp==null?null:(7-unemp),2,0))}
-            ${row('Frühindikator (CLI)', fmt(cli,1), col(cli,100,99.5))}
-            ${row('Konsumklima', fmt(conf,0), col(conf,0,-20))}
-            ${row('Leitzins (Notenbank)', fmt(rate,2,' %'), 'var(--text-1)')}
-            ${row('Realzins (Zins − Infl.)', fmt(realR,1,' %'), col(realR,0.5,-0.5))}
+            ${row('Inflation (CPI YoY)', fmt(d.cp,1,' %'), col(d.cp==null?null:(2.3-Math.abs(d.cp-2)),0.5,-1))}
+            ${row('Arbeitslosenquote', fmt(d.unemp,1,' %'), col(d.unemp==null?null:(7-d.unemp),2,0))}
+            ${row('Frühindikator (CLI)', fmt(d.cli,1), col(d.cli,100,99.5))}
+            ${row('Leitzins / 10J', fmt(d.rate,2,' %')+' / '+fmt(d.y10,2,' %'), 'var(--text-1)')}
+            ${row('Realzins', fmt(d.realR,1,' %'), col(d.realR,0.5,-0.5))}
           </div>
-          <div style="padding:8px 12px;background:rgba(255,255,255,0.02);font-size:10.5px;line-height:1.55;color:var(--text-2);">
-            ${cp!=null?`<b>Inflation:</b> ${fmt(cp,1,' %')} — ${inflTxt(cp)}<br>`:''}
-            ${unemp!=null?`<b>Arbeitsmarkt:</b> Arbeitslosigkeit ${fmt(unemp,1,' %')} ist <b>${laborTxt(unemp)}</b>.<br>`:''}
-            ${cli!=null?`<b>Konjunktur:</b> Frühindikator ${fmt(cli,1)} ${cliTxt(cli)}.<br>`:''}
-            ${(rate!=null&&cp!=null)?`<b>Geldpolitik:</b> Leitzins ${fmt(rate,2,' %')} bei Inflation ${fmt(cp,1,' %')} → realer Zins ${fmt(realR,1,' %')} (${realR>0.5?'restriktiv, stützt die Währung':realR<-0.5?'noch locker, belastet die Währung':'neutral'}).`:''}
-          </div>
+          <div style="padding:7px 12px;background:rgba(34,211,238,0.06);font-size:10px;color:#67e8f9;text-align:center;">▸ Klick für ausführliche Experten-Analyse</div>
         </div>`;
       }).join('');
+      grid.querySelectorAll('.econ-ccard').forEach(card=>{
+        card.addEventListener('click',()=>openDetail(card.dataset.ccy));
+        card.addEventListener('mouseenter',()=>card.style.borderColor='rgba(34,211,238,0.5)');
+        card.addEventListener('mouseleave',()=>card.style.borderColor='');
+      });
     }
 
-    // China-Lückenfüller via FRED (laggy, aber besser als nichts)
-    function loadChina(){
-      fetch(WORKER+'/?fred=CPALTT01CNM659N',{cache:'no-store'}).then(r=>r.text()).then(t=>{
-        const lines=t.trim().split('\n').slice(1).filter(l=>l.includes(',')&&!isNaN(parseFloat(l.split(',')[1])));
-        if(lines.length){ CHINA.cpi=parseFloat(lines[lines.length-1].split(',')[1]); renderCountries(); }
-      }).catch(()=>{});
+    // FRED-Daten holen: 10J-Renditen je Land + China-CPI
+    function fetchFred(id){ return fetch(WORKER+'/?fred='+id,{cache:'no-store'}).then(r=>r.text()).then(t=>{ const ls=t.trim().split('\n').slice(1).filter(l=>l.includes(',')&&!isNaN(parseFloat(l.split(',')[1]))); return ls.length?parseFloat(ls[ls.length-1].split(',')[1]):null; }).catch(()=>null); }
+    function loadExtras(){
+      COUNTRIES.filter(c=>c.y10).forEach(c=>{ fetchFred(c.y10).then(v=>{ if(v!=null){ Y10[c.y10]=v; renderCountries(); } }); });
+      fetchFred('CPALTT01CNM659N').then(v=>{ if(v!=null){ CHINA.cpi=v; renderCountries(); } });
     }
 
     // ===== AKTIEN =====
@@ -4759,8 +4863,7 @@ setTimeout(() => window.renderMacroDashboard(), 800);
     const SCOLS=['close','currency','market_cap_basic','price_earnings_ttm','earnings_per_share_diluted_ttm','dividends_yield','gross_margin_ttm','operating_margin_ttm','return_on_equity','debt_to_equity','Recommend.All','description'];
     function bn(v){ if(v==null)return'—'; const a=Math.abs(v); if(a>=1e12)return(v/1e12).toFixed(2)+' T'; if(a>=1e9)return(v/1e9).toFixed(1)+' Mrd'; if(a>=1e6)return(v/1e6).toFixed(0)+' Mio'; return v.toFixed(0); }
     function recTxt(r){ if(r==null)return['—','var(--text-2)']; if(r>0.5)return['Strong Buy','#4ade80']; if(r>0.1)return['Buy','#4ade80']; if(r>=-0.1)return['Neutral','var(--amber)']; if(r>=-0.5)return['Sell','#f87171']; return['Strong Sell','#f87171']; }
-    function peTxt(pe){ if(pe==null)return''; if(pe<0)return'negatives KGV → das Unternehmen macht Verlust.'; if(pe<15)return'<b style="color:#4ade80">günstig bewertet</b> (KGV < 15).'; if(pe<25)return'<b style="color:var(--amber)">moderat bewertet</b>.'; if(pe<40)return'<b style="color:#fb923c">ambitioniert bewertet</b> — viel Wachstum eingepreist.'; return'<b style="color:#f87171">sehr teuer</b> — hohe Wachstumserwartung, anfällig für Enttäuschungen.'; }
-
+    function peTxt(pe){ if(pe==null)return''; if(pe<0)return'negatives KGV → Verlust.'; if(pe<15)return'<b style="color:#4ade80">günstig bewertet</b> (KGV < 15).'; if(pe<25)return'<b style="color:var(--amber)">moderat bewertet</b>.'; if(pe<40)return'<b style="color:#fb923c">ambitioniert bewertet</b> — viel Wachstum eingepreist.'; return'<b style="color:#f87171">sehr teuer</b> — anfällig für Enttäuschungen.'; }
     function loadStocks(tickers){
       const grid=document.getElementById('econStockGrid'); if(!grid) return;
       grid.innerHTML='Lädt Fundamentaldaten…';
@@ -4768,17 +4871,15 @@ setTimeout(() => window.renderMacroDashboard(), 800);
       fetch(WORKER+'/?tv=1',{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:body,cache:'no-store'})
         .then(r=>r.json()).then(j=>{
           const data=(j&&j.data)||[];
-          if(!data.length){ grid.innerHTML='<div style="color:var(--text-2);padding:12px;">Keine Daten — Ticker prüfen (z.B. NASDAQ:AAPL oder einfach AAPL).</div>'; return; }
+          if(!data.length){ grid.innerHTML='<div style="color:var(--text-2);padding:12px;">Keine Daten — Ticker prüfen (z.B. NASDAQ:AAPL oder AAPL).</div>'; return; }
           grid.innerHTML=data.map(item=>{
             const d=item.d||[]; const o={}; SCOLS.forEach((c,i)=>o[c]=d[i]);
             const pe=o['price_earnings_ttm'], roe=o['return_on_equity'], de=o['debt_to_equity'], gm=o['gross_margin_ttm'], om=o['operating_margin_ttm'];
-            const rec=recTxt(o['Recommend.All']);
-            const name=o['description']||item.s;
+            const rec=recTxt(o['Recommend.All']); const name=o['description']||item.s;
             const row=(l,v,c)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="color:var(--text-2);font-size:11px;">${l}</span><span style="font-weight:700;font-size:12px;color:${c||'var(--text-1)'};">${v}</span></div>`;
             return `<div class="panel" style="padding:0;overflow:hidden;">
               <div style="padding:9px 12px;background:rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:13px;font-weight:800;">${name}</span>
-                <span style="font-size:11px;font-weight:800;color:${rec[1]};">${rec[0]}</span>
+                <span style="font-size:13px;font-weight:800;">${name}</span><span style="font-size:11px;font-weight:800;color:${rec[1]};">${rec[0]}</span>
               </div>
               <div style="padding:8px 12px;">
                 ${row('Kurs', (o['close']!=null?o['close'].toFixed(2):'—')+' '+(o['currency']||''))}
@@ -4793,35 +4894,25 @@ setTimeout(() => window.renderMacroDashboard(), 800);
               </div>
               <div style="padding:8px 12px;background:rgba(255,255,255,0.02);font-size:10.5px;line-height:1.55;color:var(--text-2);">
                 <b>Bewertung:</b> ${peTxt(pe)}<br>
-                <b>Profitabilität:</b> ${om!=null?(om>=15?'<b style="color:#4ade80">sehr profitabel</b>':om>=5?'solide profitabel':'<b style="color:#f87171">dünne Margen</b>'):'—'}${roe!=null?`, ROE ${roe.toFixed(0)} % (${roe>=15?'starke Kapitalrendite':'unterdurchschnittlich'})`:''}.<br>
-                <b>Bilanz:</b> ${de!=null?(de>1.5?'<b style="color:#f87171">hoch verschuldet</b> (D/E > 1,5) — zinssensitiv':de>0.6?'moderate Verschuldung':'<b style="color:#4ade80">solide Bilanz</b>, wenig Schulden'):'—'}.<br>
+                <b>Profitabilität:</b> ${om!=null?(om>=15?'<b style="color:#4ade80">sehr profitabel</b>':om>=5?'solide profitabel':'<b style="color:#f87171">dünne Margen</b>'):'—'}${roe!=null?`, ROE ${roe.toFixed(0)} %`:''}.<br>
+                <b>Bilanz:</b> ${de!=null?(de>1.5?'<b style="color:#f87171">hoch verschuldet</b> — zinssensitiv':de>0.6?'moderate Verschuldung':'<b style="color:#4ade80">solide Bilanz</b>'):'—'}.<br>
                 <b>Analystenkonsens:</b> <span style="color:${rec[1]}">${rec[0]}</span>.
               </div>
             </div>`;
           }).join('');
         }).catch(e=>{ grid.innerHTML='<div style="color:#f87171;padding:12px;">Fehler beim Laden.</div>'; });
     }
-
-    // Eingabe
     const goBtn=document.getElementById('econStockGo'), inp=document.getElementById('econStockInput');
-    function doSearch(){
-      const raw=(inp.value||'').trim(); if(!raw) return;
-      const t = raw.includes(':')? raw.toUpperCase() : (/^[A-Z]{1,5}(\.[A-Z])?$/i.test(raw)? raw.toUpperCase() : raw.toUpperCase());
-      // ohne Börsenpräfix: TradingView findet meist via mehreren — wir probieren NASDAQ+NYSE+XETR
-      const cands = raw.includes(':')? [t] : ['NASDAQ:'+t,'NYSE:'+t,'XETR:'+t];
-      loadStocks(cands);
-    }
+    function doSearch(){ const raw=(inp.value||'').trim(); if(!raw) return; const t=raw.toUpperCase(); const cands=raw.includes(':')?[t]:['NASDAQ:'+t,'NYSE:'+t,'XETR:'+t]; loadStocks(cands); }
     if(goBtn) goBtn.addEventListener('click',doSearch);
     if(inp) inp.addEventListener('keydown',e=>{ if(e.key==='Enter') doSearch(); });
 
-    // ===== Start =====
-    function start(){ renderCountries(); loadChina(); setTimeout(renderCountries, 6000); setTimeout(renderCountries, 20000); }
-    if(document.readyState!=='loading') setTimeout(start, 3000);
+    function start(){ renderCountries(); loadExtras(); setTimeout(renderCountries,6000); setTimeout(renderCountries,20000); }
+    if(document.readyState!=='loading') setTimeout(start,3000);
     else document.addEventListener('DOMContentLoaded',()=>setTimeout(start,3000));
   } catch(e) { /* Wirtschafts-Abteilung optional */ }
 })();
 </script>
-
 
 <!-- ====== SECTION 13: BIAS FORECAST · ALL ASSETS ====== -->
 <div class="section">
