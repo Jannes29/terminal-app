@@ -4682,16 +4682,17 @@ setTimeout(() => window.renderMacroDashboard(), 800);
 
     // ===== LÄNDER =====
     const COUNTRIES=[
-      {n:'USA',           flag:'🇺🇸', oecd:'USA',  cb:'Fed',  ccy:'USD', y10:'IRLTLT01USM156N'},
-      {n:'Eurozone',      flag:'🇪🇺', oecd:'EA20', cb:'ECB',  ccy:'EUR', y10:'IRLTLT01EZM156N'},
-      {n:'Großbritannien',flag:'🇬🇧', oecd:'GBR',  cb:'BoE',  ccy:'GBP', y10:'IRLTLT01GBM156N'},
-      {n:'Japan',         flag:'🇯🇵', oecd:'JPN',  cb:'BoJ',  ccy:'JPY', y10:'IRLTLT01JPM156N'},
-      {n:'Schweiz',       flag:'🇨🇭', oecd:'CHE',  cb:'SNB',  ccy:'CHF', y10:'IRLTLT01CHM156N'},
-      {n:'Kanada',        flag:'🇨🇦', oecd:'CAN',  cb:null,   ccy:'CAD', y10:'IRLTLT01CAM156N'},
-      {n:'Australien',    flag:'🇦🇺', oecd:'AUS',  cb:'RBA',  ccy:'AUD', y10:'IRLTLT01AUM156N'},
-      {n:'Neuseeland',    flag:'🇳🇿', oecd:'NZL',  cb:'RBNZ', ccy:'NZD', y10:'IRLTLT01NZM156N'},
-      {n:'China',         flag:'🇨🇳', oecd:null,   cb:null,   ccy:'CNY', y10:null}
+      {n:'USA',           flag:'🇺🇸', oecd:'USA',  cb:'Fed',  ccy:'USD', y10:'IRLTLT01USM156N', iso:'US'},
+      {n:'Eurozone',      flag:'🇪🇺', oecd:'EA20', cb:'ECB',  ccy:'EUR', y10:'IRLTLT01EZM156N', iso:'U2'},
+      {n:'Großbritannien',flag:'🇬🇧', oecd:'GBR',  cb:'BoE',  ccy:'GBP', y10:'IRLTLT01GBM156N', iso:'GB'},
+      {n:'Japan',         flag:'🇯🇵', oecd:'JPN',  cb:'BoJ',  ccy:'JPY', y10:'IRLTLT01JPM156N', iso:'JP', unempFred:'LRHUTTTTJPM156S'},
+      {n:'Schweiz',       flag:'🇨🇭', oecd:'CHE',  cb:'SNB',  ccy:'CHF', y10:'IRLTLT01CHM156N', iso:'CH'},
+      {n:'Kanada',        flag:'🇨🇦', oecd:'CAN',  cb:null,   ccy:'CAD', y10:'IRLTLT01CAM156N', iso:'CA'},
+      {n:'Australien',    flag:'🇦🇺', oecd:'AUS',  cb:'RBA',  ccy:'AUD', y10:'IRLTLT01AUM156N', iso:'AU'},
+      {n:'Neuseeland',    flag:'🇳🇿', oecd:'NZL',  cb:'RBNZ', ccy:'NZD', y10:'IRLTLT01NZM156N', iso:'NZ', unempFred:'LRHUTTTTNZQ156S'},
+      {n:'China',         flag:'🇨🇳', oecd:null,   cb:null,   ccy:'CNY', y10:null,               iso:'CN'}
     ];
+    const DBCPI={}; const DBUNEMP={}; // ISO2 → Wert (DBnomics IMF / FRED, Lückenfüller)
     const CBNAME={Fed:'Federal Reserve (Fed)',ECB:'Europäische Zentralbank (EZB)',BoE:'Bank of England (BoE)',BoJ:'Bank of Japan (BoJ)',SNB:'Schweizerische Nationalbank (SNB)',RBA:'Reserve Bank of Australia (RBA)',RBNZ:'Reserve Bank of New Zealand (RBNZ)'};
     let CHINA={cpi:null};
     const Y10={};       // FRED-Series-ID → letzter Wert
@@ -4699,8 +4700,10 @@ setTimeout(() => window.renderMacroDashboard(), 800);
 
     function gather(C){
       const gO=window.getOecd||(()=>null); const gF=window.getFred||(()=>null); const cbR=window.CB_RATES||{};
-      let cp = C.oecd? gO(C.oecd,'CP') : CHINA.cpi;
+      let cp = C.oecd? gO(C.oecd,'CP') : null;
+      if(cp==null && C.iso) cp=DBCPI[C.iso];
       let unemp = C.oecd? gO(C.oecd,'UNEMP') : null;
+      if(unemp==null && C.iso) unemp=DBUNEMP[C.iso];
       let cli = C.oecd? gO(C.oecd,'CLI') : null;
       let conf = C.oecd? gO(C.oecd,'CONF') : null;
       let retail = C.oecd? gO(C.oecd,'RETAIL') : null;
@@ -4768,6 +4771,18 @@ setTimeout(() => window.renderMacroDashboard(), 800);
         } else if(d.ccy==='USD' && usY!=null){ t+=`Die 10-jährige US-Treasury rentiert mit <b>${fmt(usY,2,' %')}</b> und ist der globale Anker — höhere US-Realrenditen ziehen Kapital in den Dollar.`; }
         const v=verdict(d);
         t+=` <b>Fazit:</b> Aus Inflation, Arbeitsmarkt, Konjunktur und realem Zins ergibt sich <b style="color:${v.cl}">${v.t}</b>.`;
+        P.push(t);
+      }
+      // 3b) Gesamteinordnung (Synthese)
+      {
+        let t='<b>Gesamteinordnung.</b> ';
+        const hot = d.cp!=null && d.cp>=3, tight = d.unemp!=null && d.unemp<=4.5, up = d.cli!=null && d.cli>=100, restr = d.realR!=null && d.realR>0.5;
+        if(hot && tight) t+='Die Kombination aus <b>hartnäckiger Inflation und engem Arbeitsmarkt</b> ist klassisch spätzyklisch — die Notenbank muss restriktiv bleiben, was die Währung stützt, aber das Wachstum mit Verzögerung bremst. ';
+        else if(d.cp!=null && d.cp<1.2 && (d.cli!=null && d.cli<100)) t+='Niedrige Inflation und nachlassende Konjunktur deuten auf ein <b>disinflationäres/abkühlendes Umfeld</b> — die Notenbank hat Spielraum für Lockerungen, was die Währung tendenziell belastet. ';
+        else if(up && !hot) t+='Solide Konjunktur bei kontrollierter Inflation deutet auf ein <b>günstiges „soft-landing"-Umfeld</b> — konstruktiv für die Wirtschaft, neutral bis leicht stützend für die Währung. ';
+        else t+='Das Bild ist gemischt; einzelne Kräfte ziehen in unterschiedliche Richtungen. ';
+        if(restr) t+='Der positive Realzins zeigt, dass die Geldpolitik bereits bremst — bei kippender Konjunktur kann die Notenbank zügig zu Senkungen übergehen. ';
+        t+='Für die Währung zählt vor allem die <b>relative</b> Lage: nicht der absolute Wert, sondern wie diese Treiber im Vergleich zur Gegenwährung stehen (Zinsdifferenz, Wachstumsvorsprung, Risikoneigung).';
         P.push(t);
       }
       // 4) Risiken/Ausblick
@@ -4853,9 +4868,17 @@ setTimeout(() => window.renderMacroDashboard(), 800);
 
     // FRED-Daten holen: 10J-Renditen je Land + China-CPI
     function fetchFred(id){ return fetch(WORKER+'/?fred='+id,{cache:'no-store'}).then(r=>r.text()).then(t=>{ const ls=t.trim().split('\n').slice(1).filter(l=>l.includes(',')&&!isNaN(parseFloat(l.split(',')[1]))); return ls.length?parseFloat(ls[ls.length-1].split(',')[1]):null; }).catch(()=>null); }
+    // DBnomics (IMF) — direkt aus dem Browser (CORS offen), füllt CPI-Lücken (Japan/China/NZ/CH)
+    function dbCpi(iso){
+      return fetch('https://api.db.nomics.world/v22/series/IMF/CPI/M.'+iso+'.PCPI_PC_CP_A_PT?observations=1',{cache:'no-store'})
+        .then(r=>r.json()).then(d=>{ const s=(d.series&&d.series.docs&&d.series.docs[0])||{}; const v=(s.value||[]).filter(x=>typeof x==='number'); return v.length?v[v.length-1]:null; }).catch(()=>null);
+    }
     function loadExtras(){
       COUNTRIES.filter(c=>c.y10).forEach(c=>{ fetchFred(c.y10).then(v=>{ if(v!=null){ Y10[c.y10]=v; renderCountries(); } }); });
-      fetchFred('CPALTT01CNM659N').then(v=>{ if(v!=null){ CHINA.cpi=v; renderCountries(); } });
+      // CPI-Lücken (Länder ohne frische OECD-Inflation) über DBnomics/IMF
+      ['JP','CN','NZ','CH'].forEach(iso=>{ dbCpi(iso).then(v=>{ if(v!=null){ DBCPI[iso]=v; renderCountries(); } }); });
+      // Arbeitslosigkeit-Lücken über FRED (Japan/Neuseeland frisch)
+      COUNTRIES.filter(c=>c.unempFred).forEach(c=>{ fetchFred(c.unempFred).then(v=>{ if(v!=null){ DBUNEMP[c.iso]=v; renderCountries(); } }); });
     }
 
     // ===== AKTIEN =====
