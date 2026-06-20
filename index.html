@@ -4627,6 +4627,202 @@ setTimeout(() => window.renderMacroDashboard(), 800);
 })();
 </script>
 
+<!-- ====== SECTION 12C: WIRTSCHAFTS-ABTEILUNG ====== -->
+<div class="section" id="econDept">
+  <div class="section-head">
+    <h2>12C · <em>Wirtschafts-Abteilung</em> · Makro je Land + Aktien-Fundamental<span class="powers-badge">Live · erklärt</span></h2>
+    <div class="meta">G10 + China · FRED · OECD · Notenbanken · TradingView-Fundamentals</div>
+  </div>
+  <div style="display:flex;gap:8px;margin:6px 0 12px;flex-wrap:wrap;">
+    <button class="econ-tab active" data-etab="laender" style="background:rgba(34,211,238,0.18);color:#67e8f9;border:1px solid rgba(34,211,238,0.4);border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;">🌍 Länder-Makro</button>
+    <button class="econ-tab" data-etab="aktien" style="background:rgba(255,255,255,0.05);color:var(--text-2);border:1px solid var(--border);border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;">📊 Aktien-Fundamental</button>
+  </div>
+
+  <div id="econLaender">
+    <div class="panel" style="margin-bottom:10px;">
+      <div style="padding:10px 12px;font-size:11.5px;line-height:1.6;color:var(--text-2);">
+        <b style="color:var(--text-1);">Wie liest man das?</b> Pro Land siehst du die vier Kräfte, die eine Währung treiben: <b>Inflation</b> (über 2 % → Notenbank eher restriktiv → Währung tendenziell stark), <b>Arbeitsmarkt</b> (niedrige Arbeitslosigkeit = robust), <b>Frühindikator</b> (über 100 = Aufschwung) und <b>Leitzins</b> (höher + real positiv = Kapital fließt zu, stützt die Währung). Darunter steht in Klartext, was die Lage bedeutet. Alle Werte live aus FRED/OECD/Notenbanken.
+      </div>
+    </div>
+    <div id="econCountryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;">Lädt Wirtschaftsdaten…</div>
+  </div>
+
+  <div id="econAktien" style="display:none;">
+    <div class="panel" style="margin-bottom:10px;">
+      <div style="padding:10px 12px;font-size:11.5px;line-height:1.6;color:var(--text-2);">
+        <b style="color:var(--text-1);">Fundamentalanalyse:</b> <b>KGV</b> (Kurs/Gewinn — niedrig = günstig bewertet, hoch = teuer/viel Wachstum erwartet), <b>Marge</b> (wie profitabel), <b>ROE</b> (Eigenkapitalrendite), <b>Verschuldung</b> (Debt/Equity — über 1,5 = hoch gehebelt) und der <b>Analystenkonsens</b>. Tippe einen Ticker ein oder nutze die Vorauswahl.
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+      <input id="econStockInput" placeholder="Ticker, z.B. AAPL, MSFT, SAP, ASML" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--text-1);min-width:240px;">
+      <button id="econStockGo" style="background:linear-gradient(135deg,#22d3ee,#3b82f6);color:#000;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;">Analysieren</button>
+      <span style="font-size:10px;color:var(--text-2);">Vorauswahl lädt automatisch</span>
+    </div>
+    <div id="econStockGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;">Lädt Fundamentaldaten…</div>
+  </div>
+</div>
+<script>
+(function(){
+  try {
+    const WORKER='https://kayser-data.mehmedkayser.workers.dev';
+    const fmt=(v,d=2,suf='')=> (v==null||isNaN(v))?'—':(v>=0&&suf==='%'&&d===2?'':'')+(Number(v).toFixed(d))+suf;
+    const col=(v,good,bad)=> v==null?'var(--text-2)':(v>=good?'#4ade80':v<=bad?'#f87171':'var(--amber)');
+
+    // ===== TAB-Umschaltung =====
+    document.querySelectorAll('.econ-tab').forEach(b=>b.addEventListener('click',()=>{
+      document.querySelectorAll('.econ-tab').forEach(x=>{x.classList.remove('active');x.style.background='rgba(255,255,255,0.05)';x.style.color='var(--text-2)';x.style.border='1px solid var(--border)';});
+      b.classList.add('active');b.style.background='rgba(34,211,238,0.18)';b.style.color='#67e8f9';b.style.border='1px solid rgba(34,211,238,0.4)';
+      const t=b.dataset.etab;
+      document.getElementById('econLaender').style.display = t==='laender'?'':'none';
+      document.getElementById('econAktien').style.display = t==='aktien'?'':'none';
+      if(t==='aktien' && !window.__econStocksLoaded){ window.__econStocksLoaded=true; loadStocks(STOCK_PRESET); }
+    }));
+
+    // ===== LÄNDER =====
+    const COUNTRIES=[
+      {n:'USA',           flag:'🇺🇸', oecd:'USA',  cb:'Fed',  ccy:'USD'},
+      {n:'Eurozone',      flag:'🇪🇺', oecd:'EA20', cb:'ECB',  ccy:'EUR'},
+      {n:'Großbritannien',flag:'🇬🇧', oecd:'GBR',  cb:'BoE',  ccy:'GBP'},
+      {n:'Japan',         flag:'🇯🇵', oecd:'JPN',  cb:'BoJ',  ccy:'JPY'},
+      {n:'Schweiz',       flag:'🇨🇭', oecd:'CHE',  cb:'SNB',  ccy:'CHF'},
+      {n:'Kanada',        flag:'🇨🇦', oecd:'CAN',  cb:null,   ccy:'CAD'},
+      {n:'Australien',    flag:'🇦🇺', oecd:'AUS',  cb:'RBA',  ccy:'AUD'},
+      {n:'Neuseeland',    flag:'🇳🇿', oecd:'NZL',  cb:'RBNZ', ccy:'NZD'},
+      {n:'China',         flag:'🇨🇳', oecd:null,   cb:null,   ccy:'CNY'}
+    ];
+    let CHINA={cpi:null, rate:null};
+
+    function inflTxt(cp){ if(cp==null)return''; if(cp>=3.5)return'<b style="color:#f87171">deutlich über dem 2 %-Ziel</b> → die Notenbank steht unter Druck, die Zinsen hoch zu halten (hawkish), was die Währung tendenziell stützt.'; if(cp>=2.3)return'<b style="color:var(--amber)">leicht über Ziel</b> → die Notenbank bleibt vorsichtig.'; if(cp>=1.2)return'<b style="color:#4ade80">nahe dem 2 %-Ziel</b> → Preisstabilität, Spielraum für stabile Politik.'; return'<b style="color:#f87171">zu niedrig / Deflationsrisiko</b> → die Notenbank tendiert zu Zinssenkungen (dovish), was die Währung eher schwächt.'; }
+    function laborTxt(u){ if(u==null)return''; if(u<=4)return'sehr robust/eng'; if(u<=6)return'solide'; return'schwach'; }
+    function cliTxt(c){ if(c==null)return''; return c>=100?'über 100 → <b style="color:#4ade80">Aufschwung-Signal</b>':'unter 100 → <b style="color:#f87171">Abschwung-Signal</b>'; }
+
+    function verdict(c){
+      // c: {cp,unemp,cli,rate,ccy}
+      let score=0,n=0;
+      if(c.cp!=null){ score+= c.cp>=2.3?1:(c.cp<1.2?-1:0); n++; }
+      if(c.unemp!=null){ score+= c.unemp<=4.5?1:(c.unemp>6.5?-1:0); n++; }
+      if(c.cli!=null){ score+= c.cli>=100?1:-1; n++; }
+      if(c.rate!=null&&c.cp!=null){ score+= (c.rate-c.cp)>0.5?1:((c.rate-c.cp)<-0.5?-1:0); n++; } // realer Zins
+      if(n===0) return {t:'Zu wenig Daten',cl:'var(--text-2)'};
+      const s=score/n;
+      if(s>=0.5) return {t:c.ccy+' fundamental tendenziell STARK',cl:'#4ade80'};
+      if(s<=-0.5) return {t:c.ccy+' fundamental tendenziell SCHWACH',cl:'#f87171'};
+      return {t:c.ccy+' fundamental NEUTRAL/gemischt',cl:'var(--amber)'};
+    }
+
+    function renderCountries(){
+      const grid=document.getElementById('econCountryGrid'); if(!grid) return;
+      const gO=window.getOecd||(()=>null); const gF=window.getFred||(()=>null); const cbR=window.CB_RATES||{};
+      grid.innerHTML=COUNTRIES.map(C=>{
+        let cp = C.oecd? gO(C.oecd,'CP') : CHINA.cpi;
+        let unemp = C.oecd? gO(C.oecd,'UNEMP') : null;
+        let cli = C.oecd? gO(C.oecd,'CLI') : null;
+        let conf = C.oecd? gO(C.oecd,'CONF') : null;
+        let rate = C.cb? cbR[C.cb] : (C.ccy==='CNY'? CHINA.rate : null);
+        if(C.oecd==='USA'){ if(cp==null)cp=gF('CPIAUCSL'); if(unemp==null)unemp=gF('UNRATE'); }
+        const v=verdict({cp,unemp,cli,rate,ccy:C.ccy});
+        const realR = (rate!=null&&cp!=null)? (rate-cp) : null;
+        const row=(lbl,val,c)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="color:var(--text-2);font-size:11px;">${lbl}</span><span style="font-weight:700;font-size:12px;color:${c};">${val}</span></div>`;
+        return `<div class="panel" style="padding:0;overflow:hidden;">
+          <div style="padding:9px 12px;background:rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:14px;font-weight:800;">${C.flag} ${C.n}</span>
+            <span style="font-size:11px;font-weight:800;color:${v.cl};">${v.t}</span>
+          </div>
+          <div style="padding:8px 12px;">
+            ${row('Inflation (CPI YoY)', fmt(cp,1,' %'), col(cp==null?null:(2.3-Math.abs(cp-2)),0.5,-1))}
+            ${row('Arbeitslosenquote', fmt(unemp,1,' %'), col(unemp==null?null:(7-unemp),2,0))}
+            ${row('Frühindikator (CLI)', fmt(cli,1), col(cli,100,99.5))}
+            ${row('Konsumklima', fmt(conf,0), col(conf,0,-20))}
+            ${row('Leitzins (Notenbank)', fmt(rate,2,' %'), 'var(--text-1)')}
+            ${row('Realzins (Zins − Infl.)', fmt(realR,1,' %'), col(realR,0.5,-0.5))}
+          </div>
+          <div style="padding:8px 12px;background:rgba(255,255,255,0.02);font-size:10.5px;line-height:1.55;color:var(--text-2);">
+            ${cp!=null?`<b>Inflation:</b> ${fmt(cp,1,' %')} — ${inflTxt(cp)}<br>`:''}
+            ${unemp!=null?`<b>Arbeitsmarkt:</b> Arbeitslosigkeit ${fmt(unemp,1,' %')} ist <b>${laborTxt(unemp)}</b>.<br>`:''}
+            ${cli!=null?`<b>Konjunktur:</b> Frühindikator ${fmt(cli,1)} ${cliTxt(cli)}.<br>`:''}
+            ${(rate!=null&&cp!=null)?`<b>Geldpolitik:</b> Leitzins ${fmt(rate,2,' %')} bei Inflation ${fmt(cp,1,' %')} → realer Zins ${fmt(realR,1,' %')} (${realR>0.5?'restriktiv, stützt die Währung':realR<-0.5?'noch locker, belastet die Währung':'neutral'}).`:''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // China-Lückenfüller via FRED (laggy, aber besser als nichts)
+    function loadChina(){
+      fetch(WORKER+'/?fred=CPALTT01CNM659N',{cache:'no-store'}).then(r=>r.text()).then(t=>{
+        const lines=t.trim().split('\n').slice(1).filter(l=>l.includes(',')&&!isNaN(parseFloat(l.split(',')[1])));
+        if(lines.length){ CHINA.cpi=parseFloat(lines[lines.length-1].split(',')[1]); renderCountries(); }
+      }).catch(()=>{});
+    }
+
+    // ===== AKTIEN =====
+    const STOCK_PRESET=['NASDAQ:AAPL','NASDAQ:MSFT','NASDAQ:NVDA','NASDAQ:GOOGL','NASDAQ:AMZN','NASDAQ:META','NASDAQ:TSLA','NYSE:JPM','XETR:SAP','NASDAQ:ASML','NYSE:BRK.B','NASDAQ:AVGO'];
+    const SCOLS=['close','currency','market_cap_basic','price_earnings_ttm','earnings_per_share_diluted_ttm','dividends_yield','gross_margin_ttm','operating_margin_ttm','return_on_equity','debt_to_equity','Recommend.All','description'];
+    function bn(v){ if(v==null)return'—'; const a=Math.abs(v); if(a>=1e12)return(v/1e12).toFixed(2)+' T'; if(a>=1e9)return(v/1e9).toFixed(1)+' Mrd'; if(a>=1e6)return(v/1e6).toFixed(0)+' Mio'; return v.toFixed(0); }
+    function recTxt(r){ if(r==null)return['—','var(--text-2)']; if(r>0.5)return['Strong Buy','#4ade80']; if(r>0.1)return['Buy','#4ade80']; if(r>=-0.1)return['Neutral','var(--amber)']; if(r>=-0.5)return['Sell','#f87171']; return['Strong Sell','#f87171']; }
+    function peTxt(pe){ if(pe==null)return''; if(pe<0)return'negatives KGV → das Unternehmen macht Verlust.'; if(pe<15)return'<b style="color:#4ade80">günstig bewertet</b> (KGV < 15).'; if(pe<25)return'<b style="color:var(--amber)">moderat bewertet</b>.'; if(pe<40)return'<b style="color:#fb923c">ambitioniert bewertet</b> — viel Wachstum eingepreist.'; return'<b style="color:#f87171">sehr teuer</b> — hohe Wachstumserwartung, anfällig für Enttäuschungen.'; }
+
+    function loadStocks(tickers){
+      const grid=document.getElementById('econStockGrid'); if(!grid) return;
+      grid.innerHTML='Lädt Fundamentaldaten…';
+      const body=JSON.stringify({symbols:{tickers:tickers},columns:SCOLS});
+      fetch(WORKER+'/?tv=1',{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:body,cache:'no-store'})
+        .then(r=>r.json()).then(j=>{
+          const data=(j&&j.data)||[];
+          if(!data.length){ grid.innerHTML='<div style="color:var(--text-2);padding:12px;">Keine Daten — Ticker prüfen (z.B. NASDAQ:AAPL oder einfach AAPL).</div>'; return; }
+          grid.innerHTML=data.map(item=>{
+            const d=item.d||[]; const o={}; SCOLS.forEach((c,i)=>o[c]=d[i]);
+            const pe=o['price_earnings_ttm'], roe=o['return_on_equity'], de=o['debt_to_equity'], gm=o['gross_margin_ttm'], om=o['operating_margin_ttm'];
+            const rec=recTxt(o['Recommend.All']);
+            const name=o['description']||item.s;
+            const row=(l,v,c)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="color:var(--text-2);font-size:11px;">${l}</span><span style="font-weight:700;font-size:12px;color:${c||'var(--text-1)'};">${v}</span></div>`;
+            return `<div class="panel" style="padding:0;overflow:hidden;">
+              <div style="padding:9px 12px;background:rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13px;font-weight:800;">${name}</span>
+                <span style="font-size:11px;font-weight:800;color:${rec[1]};">${rec[0]}</span>
+              </div>
+              <div style="padding:8px 12px;">
+                ${row('Kurs', (o['close']!=null?o['close'].toFixed(2):'—')+' '+(o['currency']||''))}
+                ${row('Marktkapitalisierung', bn(o['market_cap_basic'])+' '+(o['currency']||''))}
+                ${row('KGV (P/E ttm)', pe!=null?pe.toFixed(1):'—', col(pe==null?null:(30-pe),5,-1))}
+                ${row('Gewinn/Aktie (EPS)', o['earnings_per_share_diluted_ttm']!=null?o['earnings_per_share_diluted_ttm'].toFixed(2):'—')}
+                ${row('Dividendenrendite', o['dividends_yield']!=null?o['dividends_yield'].toFixed(2)+' %':'—')}
+                ${row('Bruttomarge', gm!=null?gm.toFixed(1)+' %':'—', col(gm,40,15))}
+                ${row('Operative Marge', om!=null?om.toFixed(1)+' %':'—', col(om,15,2))}
+                ${row('Eigenkapitalrendite (ROE)', roe!=null?roe.toFixed(1)+' %':'—', col(roe,15,0))}
+                ${row('Verschuldung (D/E)', de!=null?de.toFixed(2):'—', col(de==null?null:(2-de),0.5,-1))}
+              </div>
+              <div style="padding:8px 12px;background:rgba(255,255,255,0.02);font-size:10.5px;line-height:1.55;color:var(--text-2);">
+                <b>Bewertung:</b> ${peTxt(pe)}<br>
+                <b>Profitabilität:</b> ${om!=null?(om>=15?'<b style="color:#4ade80">sehr profitabel</b>':om>=5?'solide profitabel':'<b style="color:#f87171">dünne Margen</b>'):'—'}${roe!=null?`, ROE ${roe.toFixed(0)} % (${roe>=15?'starke Kapitalrendite':'unterdurchschnittlich'})`:''}.<br>
+                <b>Bilanz:</b> ${de!=null?(de>1.5?'<b style="color:#f87171">hoch verschuldet</b> (D/E > 1,5) — zinssensitiv':de>0.6?'moderate Verschuldung':'<b style="color:#4ade80">solide Bilanz</b>, wenig Schulden'):'—'}.<br>
+                <b>Analystenkonsens:</b> <span style="color:${rec[1]}">${rec[0]}</span>.
+              </div>
+            </div>`;
+          }).join('');
+        }).catch(e=>{ grid.innerHTML='<div style="color:#f87171;padding:12px;">Fehler beim Laden.</div>'; });
+    }
+
+    // Eingabe
+    const goBtn=document.getElementById('econStockGo'), inp=document.getElementById('econStockInput');
+    function doSearch(){
+      const raw=(inp.value||'').trim(); if(!raw) return;
+      const t = raw.includes(':')? raw.toUpperCase() : (/^[A-Z]{1,5}(\.[A-Z])?$/i.test(raw)? raw.toUpperCase() : raw.toUpperCase());
+      // ohne Börsenpräfix: TradingView findet meist via mehreren — wir probieren NASDAQ+NYSE+XETR
+      const cands = raw.includes(':')? [t] : ['NASDAQ:'+t,'NYSE:'+t,'XETR:'+t];
+      loadStocks(cands);
+    }
+    if(goBtn) goBtn.addEventListener('click',doSearch);
+    if(inp) inp.addEventListener('keydown',e=>{ if(e.key==='Enter') doSearch(); });
+
+    // ===== Start =====
+    function start(){ renderCountries(); loadChina(); setTimeout(renderCountries, 6000); setTimeout(renderCountries, 20000); }
+    if(document.readyState!=='loading') setTimeout(start, 3000);
+    else document.addEventListener('DOMContentLoaded',()=>setTimeout(start,3000));
+  } catch(e) { /* Wirtschafts-Abteilung optional */ }
+})();
+</script>
+
+
 <!-- ====== SECTION 13: BIAS FORECAST · ALL ASSETS ====== -->
 <div class="section">
   <div class="section-head">
