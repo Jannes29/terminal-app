@@ -4687,12 +4687,12 @@ setTimeout(() => window.renderMacroDashboard(), 800);
       {n:'Großbritannien',flag:'🇬🇧', oecd:'GBR',  cb:'BoE',  ccy:'GBP', y10:'IRLTLT01GBM156N', iso:'GB'},
       {n:'Japan',         flag:'🇯🇵', oecd:'JPN',  cb:'BoJ',  ccy:'JPY', y10:'IRLTLT01JPM156N', iso:'JP', unempFred:'LRHUTTTTJPM156S'},
       {n:'Schweiz',       flag:'🇨🇭', oecd:'CHE',  cb:'SNB',  ccy:'CHF', y10:'IRLTLT01CHM156N', iso:'CH'},
-      {n:'Kanada',        flag:'🇨🇦', oecd:'CAN',  cb:null,   ccy:'CAD', y10:'IRLTLT01CAM156N', iso:'CA'},
+      {n:'Kanada',        flag:'🇨🇦', oecd:'CAN',  cb:null,   ccy:'CAD', y10:'IRLTLT01CAM156N', iso:'CA', rateFred:'IR3TIB01CAM156N'},
       {n:'Australien',    flag:'🇦🇺', oecd:'AUS',  cb:'RBA',  ccy:'AUD', y10:'IRLTLT01AUM156N', iso:'AU'},
       {n:'Neuseeland',    flag:'🇳🇿', oecd:'NZL',  cb:'RBNZ', ccy:'NZD', y10:'IRLTLT01NZM156N', iso:'NZ', unempFred:'LRHUTTTTNZQ156S'},
       {n:'China',         flag:'🇨🇳', oecd:null,   cb:null,   ccy:'CNY', y10:null,               iso:'CN'}
     ];
-    const DBCPI={}; const DBUNEMP={}; // ISO2 → Wert (DBnomics IMF / FRED, Lückenfüller)
+    const DBCPI={}; const DBUNEMP={}; const RATES={}; // ISO2 → Wert (DBnomics IMF / FRED, Lückenfüller)
     const CBNAME={Fed:'Federal Reserve (Fed)',ECB:'Europäische Zentralbank (EZB)',BoE:'Bank of England (BoE)',BoJ:'Bank of Japan (BoJ)',SNB:'Schweizerische Nationalbank (SNB)',RBA:'Reserve Bank of Australia (RBA)',RBNZ:'Reserve Bank of New Zealand (RBNZ)'};
     let CHINA={cpi:null};
     const Y10={};       // FRED-Series-ID → letzter Wert
@@ -4709,6 +4709,7 @@ setTimeout(() => window.renderMacroDashboard(), 800);
       let retail = C.oecd? gO(C.oecd,'RETAIL') : null;
       let m3 = C.oecd? gO(C.oecd,'M3') : null;
       let rate = C.cb? cbR[C.cb] : null;
+      if(rate==null && C.iso && RATES[C.iso]!=null) rate=RATES[C.iso];
       let y10 = C.y10? Y10[C.y10] : null;
       if(C.oecd==='USA'){ if(cp==null)cp=gF('CPIAUCSL'); if(unemp==null)unemp=gF('UNRATE'); if(y10==null)y10=gF('DGS10'); }
       const realR=(rate!=null&&cp!=null)?(rate-cp):null;
@@ -4869,16 +4870,19 @@ setTimeout(() => window.renderMacroDashboard(), 800);
     // FRED-Daten holen: 10J-Renditen je Land + China-CPI
     function fetchFred(id){ return fetch(WORKER+'/?fred='+id,{cache:'no-store'}).then(r=>r.text()).then(t=>{ const ls=t.trim().split('\n').slice(1).filter(l=>l.includes(',')&&!isNaN(parseFloat(l.split(',')[1]))); return ls.length?parseFloat(ls[ls.length-1].split(',')[1]):null; }).catch(()=>null); }
     // DBnomics (IMF) — direkt aus dem Browser (CORS offen), füllt CPI-Lücken (Japan/China/NZ/CH)
-    function dbCpi(iso){
-      return fetch('https://api.db.nomics.world/v22/series/IMF/CPI/M.'+iso+'.PCPI_PC_CP_A_PT?observations=1',{cache:'no-store'})
+    function dbCpiFreq(iso,freq){
+      return fetch('https://api.db.nomics.world/v22/series/IMF/CPI/'+freq+'.'+iso+'.PCPI_PC_CP_A_PT?observations=1',{cache:'no-store'})
         .then(r=>r.json()).then(d=>{ const s=(d.series&&d.series.docs&&d.series.docs[0])||{}; const v=(s.value||[]).filter(x=>typeof x==='number'); return v.length?v[v.length-1]:null; }).catch(()=>null);
     }
+    function dbCpi(iso){ return dbCpiFreq(iso,'M').then(v=> v!=null? v : dbCpiFreq(iso,'Q')); }
     function loadExtras(){
       COUNTRIES.filter(c=>c.y10).forEach(c=>{ fetchFred(c.y10).then(v=>{ if(v!=null){ Y10[c.y10]=v; renderCountries(); } }); });
-      // CPI-Lücken (Länder ohne frische OECD-Inflation) über DBnomics/IMF
+      // CPI-Lücken (Länder ohne frische OECD-Inflation) über DBnomics/IMF (monatlich, sonst quartalsweise)
       ['JP','CN','NZ','CH'].forEach(iso=>{ dbCpi(iso).then(v=>{ if(v!=null){ DBCPI[iso]=v; renderCountries(); } }); });
       // Arbeitslosigkeit-Lücken über FRED (Japan/Neuseeland frisch)
       COUNTRIES.filter(c=>c.unempFred).forEach(c=>{ fetchFred(c.unempFred).then(v=>{ if(v!=null){ DBUNEMP[c.iso]=v; renderCountries(); } }); });
+      // Leitzins-Lücken über FRED (Kanada: 3M-Interbank als Policy-Proxy)
+      COUNTRIES.filter(c=>c.rateFred).forEach(c=>{ fetchFred(c.rateFred).then(v=>{ if(v!=null){ RATES[c.iso]=v; renderCountries(); } }); });
     }
 
     // ===== AKTIEN =====
