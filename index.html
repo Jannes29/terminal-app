@@ -4694,7 +4694,8 @@ setTimeout(() => window.renderMacroDashboard(), 800);
       {n:'Neuseeland',    flag:'🇳🇿', oecd:'NZL',  cb:'RBNZ', ccy:'NZD', y10:'IRLTLT01NZM156N', iso:'NZ', unempFred:'LRHUTTTTNZQ156S'},
       {n:'China',         flag:'🇨🇳', oecd:null,   cb:null,   ccy:'CNY', y10:null,               iso:'CN'}
     ];
-    const DBCPI={}; const DBUNEMP={}; const RATES={}; const OECDCLI={}; // ISO2 → Wert (DBnomics/FRED/WorldBank/OECD, Lückenfüller)
+    const DBCPI={}; const DBUNEMP={}; const RATES={}; const OECDCLI={}; const GDP={}; // ISO2 → Wert (DBnomics/FRED/WorldBank/OECD, Lückenfüller)
+    const WB={USD:'USA',EUR:'EMU',GBP:'GBR',JPY:'JPN',CHF:'CHE',CAD:'CAN',AUD:'AUS',NZD:'NZL',CNY:'CHN'}; // World-Bank-Ländercodes
     const CBNAME={Fed:'Federal Reserve (Fed)',ECB:'Europäische Zentralbank (EZB)',BoE:'Bank of England (BoE)',BoJ:'Bank of Japan (BoJ)',SNB:'Schweizerische Nationalbank (SNB)',RBA:'Reserve Bank of Australia (RBA)',RBNZ:'Reserve Bank of New Zealand (RBNZ)'};
     let CHINA={cpi:null};
     const Y10={};       // FRED-Series-ID → letzter Wert
@@ -4716,7 +4717,8 @@ setTimeout(() => window.renderMacroDashboard(), 800);
       let y10 = C.y10? Y10[C.y10] : null;
       if(C.oecd==='USA'){ if(cp==null)cp=gF('CPIAUCSL'); if(unemp==null)unemp=gF('UNRATE'); if(y10==null)y10=gF('DGS10'); }
       const realR=(rate!=null&&cp!=null)?(rate-cp):null;
-      return {n:C.n,flag:C.flag,ccy:C.ccy,cb:C.cb,cp,unemp,cli,conf,retail,m3,rate,y10,realR};
+      const gdp=GDP[C.ccy]!=null?GDP[C.ccy]:null;
+      return {n:C.n,flag:C.flag,ccy:C.ccy,cb:C.cb,cp,unemp,cli,conf,retail,m3,rate,y10,realR,gdp};
     }
     function verdict(d){
       let s=0,n=0;
@@ -4759,6 +4761,7 @@ setTimeout(() => window.renderMacroDashboard(), 800);
         if(d.cli!=null) t+=`Der Frühindikator (CLI) steht bei <b>${fmt(d.cli,1)}</b> — ${d.cli>=100?'über 100, das deutet auf <b>Aufschwung</b> in den kommenden 6–9 Monaten':'unter 100, das deutet auf <b>Abkühlung</b>'}. `;
         if(d.unemp!=null){ const lab=d.unemp<=4?'sehr eng':d.unemp<=6?'solide':'schwach'; t+=`Die Arbeitslosenquote von <b>${fmt(d.unemp,1,' %')}</b> ist <b>${lab}</b>${d.unemp<=4.5?' — ein enger Arbeitsmarkt hält Lohn- und damit Inflationsdruck hoch':d.unemp>6.5?' — Spielraum für die Notenbank, eher dovish zu werden':''}. `; }
         if(d.retail!=null) t+=`Der Einzelhandel ${d.retail>=0?'wächst':'schrumpft'} um <b>${fmt(d.retail,1,' %')}</b> (YoY) — der Konsum ${d.retail>=1?'trägt':d.retail>=0?'stagniert':'bremst'}. `;
+        if(d.gdp!=null) t+=`Das reale BIP wuchs zuletzt um <b>${fmt(d.gdp,1,' %')}</b> — ${d.gdp>=2.5?'kräftiges Wachstum, stützt die Währung':d.gdp>=1?'moderates Wachstum':d.gdp>=0?'schwaches Wachstum, Stagnationsnähe':'Schrumpfung — belastet die Währung'}. `;
         if(d.m3!=null) t+=`Die Geldmenge M3 wächst ${fmt(d.m3,1,' %')} (YoY).`;
         P.push(t);
       }
@@ -4823,16 +4826,19 @@ setTimeout(() => window.renderMacroDashboard(), 800);
         <div style="padding:18px 20px;">
           <div style="font-size:11px;letter-spacing:1px;color:var(--text-2);margin-bottom:6px;">LIVE-WIRTSCHAFTSDATEN</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;margin-bottom:18px;">
-            ${dataRow('Inflation (CPI YoY)', fmt(d.cp,1,' %'), col(d.cp==null?null:(2.3-Math.abs(d.cp-2)),0.5,-1))}
-            ${dataRow('Leitzins (Notenbank)', fmt(d.rate,2,' %'))}
-            ${dataRow('Arbeitslosenquote', fmt(d.unemp,1,' %'), col(d.unemp==null?null:(7-d.unemp),2,0))}
-            ${dataRow('Realzins (Zins−Infl.)', fmt(d.realR,1,' %'), col(d.realR,0.5,-0.5))}
-            ${dataRow('Frühindikator (CLI)', fmt(d.cli,1), col(d.cli,100,99.5))}
-            ${dataRow('10J-Staatsanleihe', fmt(d.y10,2,' %'))}
-            ${dataRow('Einzelhandel (YoY)', fmt(d.retail,1,' %'), col(d.retail,1,0))}
-            ${dataRow('Zinsdiff. vs. USA', ydiff==null?'—':((ydiff>=0?'+':'')+Math.round(ydiff*100)+' bp'), col(ydiff,0,-0.01))}
-            ${dataRow('Konsumklima', fmt(d.conf,0), col(d.conf,0,-20))}
-            ${dataRow('Geldmenge M3 (YoY)', fmt(d.m3,1,' %'))}
+            ${[
+              ['Inflation (CPI YoY)', d.cp, fmt(d.cp,1,' %'), col(d.cp==null?null:(2.3-Math.abs(d.cp-2)),0.5,-1)],
+              ['Leitzins (Notenbank)', d.rate, fmt(d.rate,2,' %'), null],
+              ['Arbeitslosenquote', d.unemp, fmt(d.unemp,1,' %'), col(d.unemp==null?null:(7-d.unemp),2,0)],
+              ['Realzins (Zins−Infl.)', d.realR, fmt(d.realR,1,' %'), col(d.realR,0.5,-0.5)],
+              ['BIP-Wachstum (YoY)', d.gdp, fmt(d.gdp,1,' %'), col(d.gdp,1.5,0)],
+              ['Frühindikator (CLI)', d.cli, fmt(d.cli,1), col(d.cli,100,99.5)],
+              ['10J-Staatsanleihe', d.y10, fmt(d.y10,2,' %'), null],
+              ['Zinsdiff. vs. USA', ydiff, ydiff==null?'—':((ydiff>=0?'+':'')+Math.round(ydiff*100)+' bp'), col(ydiff,0,-0.01)],
+              ['Einzelhandel (YoY)', d.retail, fmt(d.retail,1,' %'), col(d.retail,1,0)],
+              ['Konsumklima', d.conf, fmt(d.conf,0), col(d.conf,0,-20)],
+              ['Geldmenge M3 (YoY)', d.m3, fmt(d.m3,1,' %'), null]
+            ].filter(it=>it[1]!=null).map(it=>dataRow(it[0],it[2],it[3])).join('')}
           </div>
           <div style="font-size:11px;letter-spacing:1px;color:var(--text-2);margin-bottom:8px;">📋 EXPERTEN-ANALYSE</div>
           ${paras}
@@ -4848,18 +4854,23 @@ setTimeout(() => window.renderMacroDashboard(), 800);
       grid.innerHTML=COUNTRIES.map(C=>{
         const d=gather(C); DATA[C.ccy]=d; const v=verdict(d);
         const row=(lbl,val,c)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="color:var(--text-2);font-size:11px;">${lbl}</span><span style="font-weight:700;font-size:12px;color:${c};">${val}</span></div>`;
+        // Prioritätsliste der wichtigsten Kennzahlen; leere werden übersprungen → keine „—" in den Karten
+        const items=[
+          ['Inflation (CPI YoY)', d.cp, fmt(d.cp,1,' %'), col(d.cp==null?null:(2.3-Math.abs(d.cp-2)),0.5,-1)],
+          ['Arbeitslosenquote', d.unemp, fmt(d.unemp,1,' %'), col(d.unemp==null?null:(7-d.unemp),2,0)],
+          ['Leitzins (Notenbank)', d.rate, fmt(d.rate,2,' %'), 'var(--text-1)'],
+          ['Realzins (Zins−Infl.)', d.realR, fmt(d.realR,1,' %'), col(d.realR,0.5,-0.5)],
+          ['BIP-Wachstum (YoY)', d.gdp, fmt(d.gdp,1,' %'), col(d.gdp,1.5,0)],
+          ['Frühindikator (CLI)', d.cli, fmt(d.cli,1), col(d.cli,100,99.5)],
+          ['10J-Rendite', d.y10, fmt(d.y10,2,' %'), 'var(--text-1)']
+        ].filter(it=>it[1]!=null).slice(0,5);
+        const rowsHtml=items.map(it=>row(it[0],it[2],it[3])).join('');
         return `<div class="panel econ-ccard" data-ccy="${C.ccy}" style="padding:0;overflow:hidden;cursor:pointer;transition:border-color .15s;" title="Klicken für Experten-Analyse">
           <div style="padding:9px 12px;background:rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:14px;font-weight:800;">${C.flag} ${C.n}</span>
             <span style="font-size:11px;font-weight:800;color:${v.cl};">${v.t}</span>
           </div>
-          <div style="padding:8px 12px;">
-            ${row('Inflation (CPI YoY)', fmt(d.cp,1,' %'), col(d.cp==null?null:(2.3-Math.abs(d.cp-2)),0.5,-1))}
-            ${row('Arbeitslosenquote', fmt(d.unemp,1,' %'), col(d.unemp==null?null:(7-d.unemp),2,0))}
-            ${row('Frühindikator (CLI)', fmt(d.cli,1), col(d.cli,100,99.5))}
-            ${row('Leitzins / 10J', fmt(d.rate,2,' %')+' / '+fmt(d.y10,2,' %'), 'var(--text-1)')}
-            ${row('Realzins', fmt(d.realR,1,' %'), col(d.realR,0.5,-0.5))}
-          </div>
+          <div style="padding:8px 12px;">${rowsHtml}</div>
           <div style="padding:7px 12px;background:rgba(34,211,238,0.06);font-size:10px;color:#67e8f9;text-align:center;">▸ Klick für ausführliche Experten-Analyse</div>
         </div>`;
       }).join('');
@@ -4894,6 +4905,11 @@ setTimeout(() => window.renderMacroDashboard(), 800);
         .then(r=>r.text()).then(t=>{ const L=t.trim().split('\n'); if(L.length<2) return; const h=L[0].split(','); const vi=h.indexOf('OBS_VALUE'); let last=null; for(let i=1;i<L.length;i++){ const v=parseFloat((L[i].split(','))[vi]); if(!isNaN(v)) last=v; } if(last!=null){ OECDCLI['CN']=last; renderCountries(); } }).catch(()=>{});
       fetch('https://api.worldbank.org/v2/country/CHN/indicator/SL.UEM.TOTL.ZS?format=json&date=2022:2026&per_page=12',{cache:'no-store'})
         .then(r=>r.json()).then(d=>{ const rows=(d&&d[1])||[]; const valid=rows.filter(r=>r.value!=null); if(valid.length){ DBUNEMP['CN']=valid[0].value; renderCountries(); } }).catch(()=>{});
+      // BIP-Wachstum (real, % YoY) für ALLE Länder über World Bank (CORS offen) — ersetzt fehlende Felder durch eine gleichwertige Kernkennzahl
+      COUNTRIES.forEach(c=>{ const wb=WB[c.ccy]; if(!wb) return;
+        fetch('https://api.worldbank.org/v2/country/'+wb+'/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=2022:2026&per_page=12',{cache:'no-store'})
+          .then(r=>r.json()).then(d=>{ const rows=(d&&d[1])||[]; const valid=rows.filter(r=>r.value!=null); if(valid.length){ GDP[c.ccy]=valid[0].value; renderCountries(); } }).catch(()=>{});
+      });
       // Leitzins-Lücken über FRED (Kanada: 3M-Interbank als Policy-Proxy)
       COUNTRIES.filter(c=>c.rateFred).forEach(c=>{ fetchFred(c.rateFred).then(v=>{ if(v!=null){ RATES[c.iso]=v; renderCountries(); } }); });
     }
