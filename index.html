@@ -3957,7 +3957,7 @@
 <!-- ====== SECTION 12B: MACRO FACTOR DASHBOARD ====== -->
 <div class="section">
   <div class="section-head">
-    <h2>12B · <em>Macro-Faktor-Engine</em> · 100+ Tickers · 30 Cols · 16 News-Themen<span class="powers-badge">Fundamentals · Macro · Geo · Tavily-Sentiment</span></h2>
+    <h2>12B · <em>Macro-Faktor-Engine</em> · 100+ Tickers · 30 Cols · 16 News-Themen<span class="powers-badge">Fundamentals · Macro · Geo · GDELT/Markt-Sentiment</span></h2>
     <div class="meta">Refresh 1min · Sentiment 15min · Treibt alle Bias-Module</div>
   </div>
 
@@ -3967,7 +3967,7 @@
     <div class="mac-dp-tile"><div class="mac-tile-lbl">Tickers Live</div><div class="mac-tile-val" id="macDpTickers">—</div><div class="mac-tile-sub">Per Fetch</div></div>
     <div class="mac-dp-tile"><div class="mac-tile-lbl">Cols / Ticker</div><div class="mac-tile-val" id="macDpCols">—</div><div class="mac-tile-sub">Multi-TF</div></div>
     <div class="mac-dp-tile"><div class="mac-tile-lbl">Batch / Min</div><div class="mac-tile-val" id="macDpBatch">—</div><div class="mac-tile-sub">Datapoints/cycle</div></div>
-    <div class="mac-dp-tile"><div class="mac-tile-lbl">News Articles</div><div class="mac-tile-val" id="macDpNews" style="color:#a78bfa;">—</div><div class="mac-tile-sub" id="macDpNewsSub">via Tavily</div></div>
+    <div class="mac-dp-tile"><div class="mac-tile-lbl">News Articles</div><div class="mac-tile-val" id="macDpNews" style="color:#a78bfa;">—</div><div class="mac-tile-sub" id="macDpNewsSub">via GDELT</div></div>
     <div class="mac-dp-tile"><div class="mac-tile-lbl">Last Refresh</div><div class="mac-tile-val" id="macDpLast" style="font-size:14px;">—</div><div class="mac-tile-sub">Auto every 60s</div></div>
     <div class="mac-dp-tile"><div class="mac-tile-lbl">HISTORY</div><div class="mac-tile-val" id="macHistDays" style="color:#a78bfa;">—</div><div class="mac-tile-sub" id="macHistSize">— snapshots</div></div>
   </div>
@@ -4176,7 +4176,7 @@ window.renderMacroDashboard = function() {
       ['FXI (CN)', fmt(f.regional_cn, 2, '%'), clr(f.regional_cn)],
       ['EWZ (BR)', fmt(f.regional_br, 2, '%'), clr(f.regional_br)]
     ]},
-    { head: '📰 SENTIMENT (Tavily + Market-Hybrid)', rows: (() => {
+    { head: '📰 SENTIMENT · M=Markt-Proxy · G=GDELT-News (live)', rows: (() => {
       // Compute market-derived proxies (always live; -1..+1 scale)
       const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
       const proxy = {
@@ -4189,23 +4189,25 @@ window.renderMacroDashboard = function() {
         midE:   f.brent_wti_spread != null ? clamp((f.brent_wti_spread - 3) / 5, -1, 1) : null,
         china:  f.regional_cn != null ? clamp(f.regional_cn / 4, -1, 1) : null
       };
-      // Hybrid: Tavily-score if non-zero, else market-proxy
-      const hyb = (tav, prox) => {
-        if (tav != null && tav !== 0) return { v: tav, src: 'T' };
+      // Quelle ehrlich kennzeichnen: G = GDELT-News (live), M = Markt-Proxy (live, aus Preisen abgeleitet).
+      // Tavily ist offline (Keys ausgeschöpft) → für Währungen/Assets greift der Markt-Proxy, für Geo der GDELT-Score.
+      const S = (window.MACRO && window.MACRO.sentiment) || {};
+      const hyb = (entry, prox) => {
+        if (entry && typeof entry.score === 'number' && entry.score !== 0) return { v: entry.score, src: (entry.src === 'GDELT' ? 'G' : 'N') };
         if (prox != null) return { v: prox, src: 'M' };
         return { v: null, src: '—' };
       };
       const fmtH = h => h.v == null ? '—' : ((h.v >= 0 ? '+' : '') + h.v.toFixed(2) + ' ' + h.src);
       const clrH = h => h.v == null ? 'var(--text-0)' : h.v > 0 ? '#22c55e' : h.v < 0 ? '#ef4444' : 'var(--text-0)';
       const rows = [
-        ['USD News',     hyb(f.sent_usd, proxy.usd)],
-        ['EUR News',     hyb(f.sent_eur, proxy.eur)],
-        ['Equity News',  hyb(f.sent_equity, proxy.equity)],
-        ['Gold News',    hyb(f.sent_gold, proxy.gold)],
-        ['Oil News',     hyb(f.sent_oil, proxy.oil)],
-        ['Crypto News',  hyb(f.sent_crypto, proxy.crypto)],
-        ['Mid-East',     hyb(f.geo_mideast, proxy.midE)],
-        ['China',        hyb(f.geo_china, proxy.china)]
+        ['USD',          hyb(S.USD,         proxy.usd)],
+        ['EUR',          hyb(S.EUR,         proxy.eur)],
+        ['Equity',       hyb(S.EQUITY,      proxy.equity)],
+        ['Gold',         hyb(S.GOLD,        proxy.gold)],
+        ['Oil',          hyb(S.OIL,         proxy.oil)],
+        ['Crypto',       hyb(S.CRYPTO,      proxy.crypto)],
+        ['Geo Mid-East', hyb(S.GEO_MIDEAST, proxy.midE)],
+        ['Geo China',    hyb(S.GEO_CHINA,   proxy.china)]
       ];
       return rows.map(([lbl, h]) => [lbl, fmtH(h), clrH(h)]);
     })() },
@@ -4686,13 +4688,13 @@ setTimeout(() => window.renderMacroDashboard(), 800);
       {n:'Eurozone',      flag:'🇪🇺', oecd:'EA20', cb:'ECB',  ccy:'EUR', y10:'IRLTLT01EZM156N', iso:'U2'},
       {n:'Großbritannien',flag:'🇬🇧', oecd:'GBR',  cb:'BoE',  ccy:'GBP', y10:'IRLTLT01GBM156N', iso:'GB'},
       {n:'Japan',         flag:'🇯🇵', oecd:'JPN',  cb:'BoJ',  ccy:'JPY', y10:'IRLTLT01JPM156N', iso:'JP', unempFred:'LRHUTTTTJPM156S'},
-      {n:'Schweiz',       flag:'🇨🇭', oecd:'CHE',  cb:'SNB',  ccy:'CHF', y10:'IRLTLT01CHM156N', iso:'CH'},
+      {n:'Schweiz',       flag:'🇨🇭', oecd:'CHE',  cb:'SNB',  ccy:'CHF', y10:'IRLTLT01CHM156N', iso:'CH', unempEuro:'CH'},
       {n:'Kanada',        flag:'🇨🇦', oecd:'CAN',  cb:null,   ccy:'CAD', y10:'IRLTLT01CAM156N', iso:'CA', rateFred:'IR3TIB01CAM156N'},
       {n:'Australien',    flag:'🇦🇺', oecd:'AUS',  cb:'RBA',  ccy:'AUD', y10:'IRLTLT01AUM156N', iso:'AU'},
       {n:'Neuseeland',    flag:'🇳🇿', oecd:'NZL',  cb:'RBNZ', ccy:'NZD', y10:'IRLTLT01NZM156N', iso:'NZ', unempFred:'LRHUTTTTNZQ156S'},
       {n:'China',         flag:'🇨🇳', oecd:null,   cb:null,   ccy:'CNY', y10:null,               iso:'CN'}
     ];
-    const DBCPI={}; const DBUNEMP={}; const RATES={}; // ISO2 → Wert (DBnomics IMF / FRED, Lückenfüller)
+    const DBCPI={}; const DBUNEMP={}; const RATES={}; const OECDCLI={}; // ISO2 → Wert (DBnomics/FRED/WorldBank/OECD, Lückenfüller)
     const CBNAME={Fed:'Federal Reserve (Fed)',ECB:'Europäische Zentralbank (EZB)',BoE:'Bank of England (BoE)',BoJ:'Bank of Japan (BoJ)',SNB:'Schweizerische Nationalbank (SNB)',RBA:'Reserve Bank of Australia (RBA)',RBNZ:'Reserve Bank of New Zealand (RBNZ)'};
     let CHINA={cpi:null};
     const Y10={};       // FRED-Series-ID → letzter Wert
@@ -4705,6 +4707,7 @@ setTimeout(() => window.renderMacroDashboard(), 800);
       let unemp = C.oecd? gO(C.oecd,'UNEMP') : null;
       if(unemp==null && C.iso) unemp=DBUNEMP[C.iso];
       let cli = C.oecd? gO(C.oecd,'CLI') : null;
+      if(cli==null && C.iso && OECDCLI[C.iso]!=null) cli=OECDCLI[C.iso];
       let conf = C.oecd? gO(C.oecd,'CONF') : null;
       let retail = C.oecd? gO(C.oecd,'RETAIL') : null;
       let m3 = C.oecd? gO(C.oecd,'M3') : null;
@@ -4881,6 +4884,16 @@ setTimeout(() => window.renderMacroDashboard(), 800);
       ['JP','CN','NZ','CH'].forEach(iso=>{ dbCpi(iso).then(v=>{ if(v!=null){ DBCPI[iso]=v; renderCountries(); } }); });
       // Arbeitslosigkeit-Lücken über FRED (Japan/Neuseeland frisch)
       COUNTRIES.filter(c=>c.unempFred).forEach(c=>{ fetchFred(c.unempFred).then(v=>{ if(v!=null){ DBUNEMP[c.iso]=v; renderCountries(); } }); });
+      // Arbeitslosigkeit-Lücke Schweiz über Eurostat (harmonisiert, DBnomics direkt)
+      COUNTRIES.filter(c=>c.unempEuro).forEach(c=>{
+        fetch('https://api.db.nomics.world/v22/series/Eurostat/une_rt_m/M.SA.TOTAL.PC_ACT.T.'+c.unempEuro+'?observations=1',{cache:'no-store'})
+          .then(r=>r.json()).then(d=>{ const s=(d.series&&d.series.docs&&d.series.docs[0])||{}; const v=(s.value||[]).filter(x=>typeof x==='number'); if(v.length){ DBUNEMP[c.iso]=v[v.length-1]; renderCountries(); } }).catch(()=>{});
+      });
+      // China: Frühindikator (CLI) direkt von OECD SDMX (CORS offen), Arbeitslosigkeit von World Bank (CORS offen)
+      fetch('https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_KEI@DF_KEI,4.0/CHN.M.LI.IX._T.AA._Z?startPeriod=2025-06&format=csvfilewithlabels',{cache:'no-store'})
+        .then(r=>r.text()).then(t=>{ const L=t.trim().split('\n'); if(L.length<2) return; const h=L[0].split(','); const vi=h.indexOf('OBS_VALUE'); let last=null; for(let i=1;i<L.length;i++){ const v=parseFloat((L[i].split(','))[vi]); if(!isNaN(v)) last=v; } if(last!=null){ OECDCLI['CN']=last; renderCountries(); } }).catch(()=>{});
+      fetch('https://api.worldbank.org/v2/country/CHN/indicator/SL.UEM.TOTL.ZS?format=json&date=2022:2026&per_page=12',{cache:'no-store'})
+        .then(r=>r.json()).then(d=>{ const rows=(d&&d[1])||[]; const valid=rows.filter(r=>r.value!=null); if(valid.length){ DBUNEMP['CN']=valid[0].value; renderCountries(); } }).catch(()=>{});
       // Leitzins-Lücken über FRED (Kanada: 3M-Interbank als Policy-Proxy)
       COUNTRIES.filter(c=>c.rateFred).forEach(c=>{ fetchFred(c.rateFred).then(v=>{ if(v!=null){ RATES[c.iso]=v; renderCountries(); } }); });
     }
