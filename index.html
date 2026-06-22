@@ -16904,12 +16904,12 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   // Set window.BIAS_ENGINE_VERSION = 'V1' in DevTools to revert to legacy heuristic.
   // ── Bias-Glättung: zeitgewichteter EMA über die Roh-Scores. Verhindert, dass die
   // 30/60/90-Tage-Bias bei jedem 60-Sekunden-Refresh kippt. Echte mehrtägige Trends kommen
-  // weiterhin durch, aber Tagesrauschen wird gefiltert. τ=3 Tage → ~28%/24h · ~63%/3T · ~95%/9T
-  // Annäherung. Damit ist die 30/60/90-Tage-Bias ein STABILES Mehrtagesbild und kippt nicht täglich:
-  // ein echter Regimewechsel kommt erst über ~1 Woche voll durch. Persistiert in localStorage.
+  // weiterhin durch, aber Tages-/Stundenrauschen wird gefiltert. τ=5 Tage → ~18%/24h · ~45%/3T · ~70%/6T
+  // Annäherung. Damit ist die 30/60/90-Tage-Bias ein STABILES Mehrtagesbild: in wenigen Stunden bewegt
+  // sie sich kaum (~2,5%/3h), ein echter Regimewechsel kommt erst über ~1–2 Wochen voll durch.
   function smoothClassScores(raw){
     if(!raw || typeof raw!=='object') return raw;
-    const TAU_MS = 72*3600*1000;
+    const TAU_MS = 120*3600*1000;
     const now = Date.now();
     let prev = window.__CS_SMOOTH;
     if(!prev){ try{ const p=JSON.parse(localStorage.getItem('cs_smooth_v1')||'null'); if(p && p.v) prev=p; }catch(e){ if(window.DEBUG)console.warn('[caught]',e); } }
