@@ -2723,9 +2723,16 @@
           const data = G.map(c => ({ c, s100: score100(c), v: cs[c] ?? 0 })).filter(d => d.s100 != null);
           if (!data.length) return;
           data.sort((a, b) => b.s100 - a.s100);
-          // Composite gauge: avg of all 8 (50 = neutral, 100 = max risk-on)
-          const compRaw = data.reduce((s, d) => s + d.s100, 0) / data.length;
-          const comp = Math.round(compRaw);
+          // Risk-Barometer statt Durchschnitt aller 8 (der ist Nullsumme -> immer ~50 "Mixed").
+          // Echtes Risk-On/Off: Rohstoff-Block (AUD/NZD/CAD) vs. sichere Haefen (JPY/CHF/USD),
+          // geblendet mit dem Cross-Asset-Regime (Aktien/Credit/Gold), das classMacro schon liefert.
+          const sc = c => (cs[c] != null ? cs[c] : 0);
+          const commodity = (sc('AUD') + sc('NZD') + sc('CAD')) / 3;   // high-beta / risk-on
+          const haven     = (sc('JPY') + sc('CHF') + sc('USD')) / 3;   // safe-haven
+          const fxSpread  = commodity - haven;                          // >0 = risk-on
+          const regime    = (window.MACRO.globalRegime != null) ? window.MACRO.globalRegime : 0;
+          const riskSig   = 0.7 * fxSpread + 0.3 * regime;              // ~ -1 .. +1
+          const comp = Math.max(2, Math.min(98, Math.round(50 + riskSig * 70)));
           // Needle rotation: 0→100 maps to -90°→+90°
           const angle = ((comp - 50) / 50) * 90;
           const needle = document.getElementById('gauge-needle-forex');
@@ -2761,7 +2768,7 @@
             }).join('');
           }
           const foot = document.getElementById('fxSentFoot');
-          if (foot) foot.textContent = 'Live · classMacro · ' + new Date().toLocaleTimeString('de-DE', {hour12: false});
+          if (foot) foot.textContent = 'Live · Risk-Barometer (Rohstoff vs. Haven + Regime) · ' + new Date().toLocaleTimeString('de-DE', {hour12: false});
         }
         window.addEventListener('macroUpdate', renderFxSentiment);
         window.addEventListener('historyUpdate', renderFxSentiment);
