@@ -2741,7 +2741,7 @@
           if (num) num.textContent = comp;
           const lbl = document.getElementById('fxSentLbl');
           if (lbl) {
-            lbl.textContent = comp >= 75 ? 'STR. RISK-ON' : comp >= 60 ? 'Risk-On' : comp >= 40 ? 'Mixed' : comp >= 25 ? 'Risk-Off' : 'STR. RISK-OFF';
+            lbl.textContent = comp >= 75 ? 'STR. RISK-ON' : comp >= 62 ? 'Risk-On' : comp >= 54 ? 'mild Risk-On' : comp >= 47 ? 'Mixed' : comp >= 39 ? 'mild Risk-Off' : comp >= 25 ? 'Risk-Off' : 'STR. RISK-OFF';
           }
           // Strongest/Weakest
           const strong = data[0], weak = data[data.length - 1];
