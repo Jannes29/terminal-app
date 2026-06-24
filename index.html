@@ -4485,11 +4485,11 @@ setTimeout(() => window.renderMacroDashboard(), 800);
       const recent = hist.slice(-96);
       const csToB = (cs) => {
         if (cs == null) return null;
-        const amp = Math.sign(cs) * Math.pow(Math.abs(cs), 0.55);
+        const amp = Math.sign(cs) * Math.pow(Math.abs(cs), 0.42);
         return {
-          b30: Math.max(22, Math.min(78, Math.round(50 + amp * 26))),
-          b60: Math.max(12, Math.min(88, Math.round(50 + amp * 36))),
-          b90: Math.max(5, Math.min(95, Math.round(50 + amp * 46)))
+          b30: Math.max(15, Math.min(85, Math.round(50 + amp * 32))),
+          b60: Math.max(10, Math.min(90, Math.round(50 + amp * 40))),
+          b90: Math.max(5, Math.min(95, Math.round(50 + amp * 48)))
         };
       };
       let priorBias = null, priorFactors = null, priorTs = null;
@@ -4615,10 +4615,10 @@ setTimeout(() => window.renderMacroDashboard(), 800);
         if (!vortagSnap) vortagSnap = hist[Math.max(0, hist.length - 96)];
         if (vortagSnap && vortagSnap.cs && vortagSnap.cs[sym] != null) {
           const cs = vortagSnap.cs[sym];
-          const amp = Math.sign(cs) * Math.pow(Math.abs(cs), 0.55);
-          const b30 = Math.max(22, Math.min(78, Math.round(50 + amp * 26)));
-          const b60 = Math.max(12, Math.min(88, Math.round(50 + amp * 36)));
-          const b90 = Math.max(5, Math.min(95, Math.round(50 + amp * 46)));
+          const amp = Math.sign(cs) * Math.pow(Math.abs(cs), 0.42);
+          const b30 = Math.max(15, Math.min(85, Math.round(50 + amp * 32)));
+          const b60 = Math.max(10, Math.min(90, Math.round(50 + amp * 40)));
+          const b90 = Math.max(5, Math.min(95, Math.round(50 + amp * 48)));
           return {
             date: dateKey(vortagSnap.ts),
             snap: { ts: vortagSnap.ts, b30, b60, b90, factors: vortagSnap.f || {} },
@@ -8902,7 +8902,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   const RISK_ON={AUD:1,NZD:1,CAD:1,NAS100:1,SPX500:1,GER40:1,FTSE:1,XCU:1,WTI:1,BRENT:1,BTC:1,ETH:1,SOL:1};
   const RISK_OFF={JPY:1,CHF:1,USD:1,XAU:1};
   function status(t,c){ const e=document.getElementById('scanStatus'); if(e){e.textContent=t; e.style.color=c||'var(--text-2,#9ca3af)';} }
-  function bias30(cs){ const amp=Math.sign(cs)*Math.pow(Math.abs(cs),0.55); return Math.max(22,Math.min(78,Math.round(50+amp*26))); }
+  function bias30(cs){ const amp=Math.sign(cs)*Math.pow(Math.abs(cs),0.42); return Math.max(15,Math.min(85,Math.round(50+amp*32))); }
   // ── Seasonality-Abgleich: Vorwärts-30-Tage-Richtung aus echter Historie (Worker), gecacht pro Tag ──
   const SYM={USD:'DX-Y.NYB',EUR:'EURUSD=X',GBP:'GBPUSD=X',JPY:'USDJPY=X',CHF:'USDCHF=X',AUD:'AUDUSD=X',NZD:'NZDUSD=X',CAD:'USDCAD=X',NAS100:'^NDX',SPX500:'^GSPC',GER40:'^GDAXI',FTSE:'^FTSE',XAU:'GC=F',XAG:'SI=F',XCU:'HG=F',WTI:'CL=F',NGAS:'NG=F',ZW:'ZW=F',ZC:'ZC=F',ZS:'ZS=F',KC:'KC=F',SB:'SB=F',CC:'CC=F',CT:'CT=F',BTC:'BTC-USD',ETH:'ETH-USD',SOL:'SOL-USD',BRENT:'BZ=F',XPT:'PL=F',XPD:'PA=F'};
   const SEA_INVERT={JPY:1,CHF:1,CAD:1}; // USD/XXX-Paare → Richtung invertieren für Währungsstärke
@@ -15300,13 +15300,13 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       const macro60 = classMacro * 0.65 + ownPerf3M * 0.35;
       const macro90 = classMacro * 0.75 + ownPerf6M * 0.25;
       const macro = classMacro;
-      const amp30 = Math.sign(macro30) * Math.pow(Math.abs(macro30), 0.55);
-      const amp60 = Math.sign(macro60) * Math.pow(Math.abs(macro60), 0.55);
-      const amp90 = Math.sign(macro90) * Math.pow(Math.abs(macro90), 0.55);
+      const amp30 = Math.sign(macro30) * Math.pow(Math.abs(macro30), 0.42);
+      const amp60 = Math.sign(macro60) * Math.pow(Math.abs(macro60), 0.42);
+      const amp90 = Math.sign(macro90) * Math.pow(Math.abs(macro90), 0.42);
       // 30D narrow (short-term noisy), 60D mid, 90D widest (structural conviction)
-      const b30 = Math.max(22, Math.min(78, Math.round(50 + amp30 * 26)));
-      const b60 = Math.max(12, Math.min(88, Math.round(50 + amp60 * 36)));
-      const b90 = Math.max(5, Math.min(95, Math.round(50 + amp90 * 46)));
+      const b30 = Math.max(15, Math.min(85, Math.round(50 + amp30 * 32)));
+      const b60 = Math.max(10, Math.min(90, Math.round(50 + amp60 * 40)));
+      const b90 = Math.max(5, Math.min(95, Math.round(50 + amp90 * 48)));
       const drivers = [];
       // Lead with own ETF performance — UNIQUE per currency
       if (ownM1 != null) drivers.push(`${c}-ETF 1M ${ownM1>=0?'+':''}${ownM1.toFixed(1)}%`);
@@ -15512,13 +15512,13 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       const macro90 = classMacro * 0.75 + ownPerf6M * 0.25;
       const macro = classMacro;
       // sqrt amplification + per-horizon multiplier
-      const amp30 = Math.sign(macro30) * Math.pow(Math.abs(macro30), 0.55);
-      const amp60 = Math.sign(macro60) * Math.pow(Math.abs(macro60), 0.55);
-      const amp90 = Math.sign(macro90) * Math.pow(Math.abs(macro90), 0.55);
+      const amp30 = Math.sign(macro30) * Math.pow(Math.abs(macro30), 0.42);
+      const amp60 = Math.sign(macro60) * Math.pow(Math.abs(macro60), 0.42);
+      const amp90 = Math.sign(macro90) * Math.pow(Math.abs(macro90), 0.42);
       // 30D narrow (short-term noisy), 60D mid, 90D widest (structural conviction)
-      const b30 = Math.max(22, Math.min(78, Math.round(50 + amp30 * 26)));
-      const b60 = Math.max(12, Math.min(88, Math.round(50 + amp60 * 36)));
-      const b90 = Math.max(5, Math.min(95, Math.round(50 + amp90 * 46)));
+      const b30 = Math.max(15, Math.min(85, Math.round(50 + amp30 * 32)));
+      const b60 = Math.max(10, Math.min(90, Math.round(50 + amp60 * 40)));
+      const b90 = Math.max(5, Math.min(95, Math.round(50 + amp90 * 48)));
 
       // Per-asset fundamental rationale — Macro + asset-specific economic drivers
       // (No RSI / ATH / EMA — pure macroeconomic + geo per user spec)
