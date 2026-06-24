@@ -13132,12 +13132,27 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       const csQuote = quote ? cs[quote] : null;
 
       const avgBias = (b30 + b60 + b90) / 3;
-      const dir   = avgBias >= 55 ? 'LONG' : avgBias <= 45 ? 'SHORT' : 'NEUTRAL';
+      // Multi-Horizont-Agreement: zeigen 30/60/90 dieselbe Richtung? (3 = alle einig, 1 = 2:1 gespalten)
+      const _sideOf = b => b >= 50 ? 1 : -1;
+      const _agree = Math.abs([b30,b60,b90].map(_sideOf).reduce((a,b)=>a+b,0));
+      const allHorizonsAgree = _agree === 3;
+      // Hysterese (Dead-Band): einmal gesetzte Richtung haelt, bis die Bias klar zurueckkommt.
+      // Einstieg LONG ab 55, bleibt LONG bis <48; Einstieg SHORT ab 45, bleibt SHORT bis >52.
+      // Verhindert das Bullish<->Neutral-Flippen direkt an der Schwelle.
+      const _hk = 'bias_dir_state_v1';
+      let _bst; try { _bst = JSON.parse(localStorage.getItem(_hk) || '{}'); } catch(e) { _bst = {}; }
+      const _prevDir = _bst[sym] && _bst[sym].dir;
+      let dir;
+      if (_prevDir === 'LONG')       dir = avgBias >= 48 ? 'LONG'  : (avgBias <= 45 ? 'SHORT' : 'NEUTRAL');
+      else if (_prevDir === 'SHORT') dir = avgBias <= 52 ? 'SHORT' : (avgBias >= 55 ? 'LONG'  : 'NEUTRAL');
+      else                           dir = avgBias >= 55 ? 'LONG'  : (avgBias <= 45 ? 'SHORT' : 'NEUTRAL');
+      try { _bst[sym] = { dir, t: Date.now() }; localStorage.setItem(_hk, JSON.stringify(_bst)); } catch(e) { if(window.DEBUG)console.warn('[caught]',e); }
       const dirCls = dir === 'LONG' ? 'pos' : dir === 'SHORT' ? 'neg' : 'neu';
       const dirIcon = dir === 'LONG' ? '↑' : dir === 'SHORT' ? '↓' : '→';
-      const convStrength = Math.abs(avgBias - 50);
-      const conviction = convStrength > 25 ? 'HOCH' : convStrength > 15 ? 'MITTEL' : convStrength > 7 ? 'NIEDRIG' : 'MARGINAL';
-      const convCls = convStrength > 25 ? 'pos' : convStrength > 15 ? 'neu' : 'neg';
+      // Konviktion = Bias-Magnitude, abgewertet wenn die Horizonte uneinig sind (gespaltene Lage = unsicherer).
+      const convStrength = Math.abs(avgBias - 50) * (allHorizonsAgree ? 1 : (_agree === 1 ? 0.5 : 0.8));
+      const conviction = convStrength > 22 ? 'HOCH' : convStrength > 13 ? 'MITTEL' : convStrength > 6 ? 'NIEDRIG' : 'MARGINAL';
+      const convCls = convStrength > 22 ? 'pos' : convStrength > 13 ? 'neu' : 'neg';
 
       // ===== Helper: get fundamental value from FRED cache =====
       const ff = id => {
@@ -20924,6 +20939,21 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
   // ====================================================================
   // TOP-TRADES-NOW — scans all bias-cards, surfaces top 5 by conviction
   // ====================================================================
+  // Zentrale Bias-Richtung mit Hysterese (Dead-Band) — konsistent mit dem Pro-Analyse-Forecast.
+  // Einstieg LONG ab 55 / SHORT ab 45; bleibt LONG bis <48 bzw. SHORT bis >52, damit die
+  // Richtung nicht an der Schwelle hin- und herflippt.
+  window.biasDirHyst = function(sym, b30, b60, b90){
+    const avg = (b30+b60+b90)/3;
+    const k = 'bias_dir_state_v1';
+    let st; try{ st = JSON.parse(localStorage.getItem(k)||'{}'); }catch(e){ st = {}; }
+    const prev = st[sym] && st[sym].dir;
+    let dir;
+    if(prev==='LONG')       dir = avg>=48 ? 'LONG'  : (avg<=45?'SHORT':'NEUTRAL');
+    else if(prev==='SHORT') dir = avg<=52 ? 'SHORT' : (avg>=55?'LONG':'NEUTRAL');
+    else                    dir = avg>=55 ? 'LONG'  : (avg<=45?'SHORT':'NEUTRAL');
+    try{ st[sym] = {dir,t:Date.now()}; localStorage.setItem(k, JSON.stringify(st)); }catch(e){}
+    return dir;
+  };
   function getAllBiasCards() {
     const out = [];
     document.querySelectorAll('.bias-card').forEach(card => {
@@ -20935,7 +20965,7 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       const b90 = parseInt(vals[2]?.textContent, 10);
       if (!sym || isNaN(b30)) return;
       const conv = Math.max(Math.abs(b30 - 50), Math.abs(b60 - 50), Math.abs(b90 - 50));
-      const dir = (b30 + b60 + b90) / 3 >= 55 ? 'LONG' : (b30 + b60 + b90) / 3 <= 45 ? 'SHORT' : 'NEUTRAL';
+      const dir = window.biasDirHyst ? window.biasDirHyst(sym, b30, b60, b90) : ((b30 + b60 + b90) / 3 >= 55 ? 'LONG' : (b30 + b60 + b90) / 3 <= 45 ? 'SHORT' : 'NEUTRAL');
       out.push({ sym, nm, b30, b60, b90, conv, dir });
     });
     return out.sort((a, b) => b.conv - a.conv);
