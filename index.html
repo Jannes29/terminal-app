@@ -15620,9 +15620,16 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
       const a = getBiasFromCard(base);
       const b = getBiasFromCard(quote);
       if (!a || !b) return;
-      const c30 = Math.round(50 + (a.b30 - b.b30) / 2);
-      const c60 = Math.round(50 + (a.b60 - b.b60) / 2);
-      const c90 = Math.round(50 + (a.b90 - b.b90) / 2);
+      // Ausdrucksstarke Cross-Skalierung: relative Staerke der beiden Beine, gespreizt mit
+      // derselben Potenz-Kurve wie die Einzelwaehrungen — sonst klebt die Cross-Bias bei ~50.
+      const _expand = (d, mult) => {
+        const x = Math.max(-1, Math.min(1, d / 55));
+        const amp = Math.sign(x) * Math.pow(Math.abs(x), 0.42);
+        return Math.round(50 + amp * mult);
+      };
+      const c30 = Math.max(12, Math.min(88, _expand(a.b30 - b.b30, 28)));
+      const c60 = Math.max(8,  Math.min(92, _expand(a.b60 - b.b60, 34)));
+      const c90 = Math.max(5,  Math.min(95, _expand(a.b90 - b.b90, 40)));
       updateBiasCard(pair, c30, c60, c90,
         `Live abgeleitet: ${base}(${a.b30}/${a.b60}/${a.b90}) − ${quote}(${b.b30}/${b.b60}/${b.b90})`);
     });
