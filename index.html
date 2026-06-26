@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-06-24-A';
+  var BUILD_ID = '2026-06-24-B';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -2757,7 +2757,21 @@
           const haven     = (sc('JPY') + sc('CHF') + sc('USD')) / 3;   // safe-haven
           const fxSpread  = commodity - haven;                          // >0 = risk-on
           const regime    = (window.MACRO.globalRegime != null) ? window.MACRO.globalRegime : 0;
-          const riskSig   = 0.7 * fxSpread + 0.3 * regime;              // ~ -1 .. +1
+          // Reaktive Tagesbewegung (geraeteunabhaengig, aus Live-Kursen): faengt Sell-offs sofort,
+          // bevor die mittelfristig geglaetteten Scores nachziehen. Risk-Assets vs. Haefen, heutige %-Aenderung.
+          let todayMove = 0;
+          try {
+            const R = (window.MACRO && window.MACRO.raw) || {};
+            const ch = s => { const d = R[s]; return d && typeof d.change === 'number' ? d.change : null; };
+            const onSyms  = ['SP:SPX','NASDAQ:NDX','XETR:DAX','FTSE:UKX','COMEX:HG1!','BINANCE:BTCUSDT'];
+            const offSyms = ['FX_IDC:USDJPY','FX_IDC:USDCHF']; // negative %-Aenderung = JPY/CHF staerker = risk-off
+            const on  = onSyms.map(ch).filter(x => x != null);
+            const off = offSyms.map(ch).filter(x => x != null).map(x => -x); // -USDxxx = Haven-Staerke
+            const onAvg  = on.length  ? on.reduce((a,b)=>a+b,0)/on.length   : 0;
+            const offAvg = off.length ? off.reduce((a,b)=>a+b,0)/off.length : 0;
+            todayMove = Math.max(-1, Math.min(1, (onAvg - offAvg) / 1.5)); // normiert ~ -1..+1
+          } catch(e) {}
+          const riskSig = 0.4 * fxSpread + 0.2 * regime + 0.4 * todayMove; // ~ -1 .. +1
           const comp = Math.max(2, Math.min(98, Math.round(50 + riskSig * 70)));
           // Needle rotation: 0→100 maps to -90°→+90°
           const angle = ((comp - 50) / 50) * 90;
