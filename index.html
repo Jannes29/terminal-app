@@ -7,6 +7,32 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>MACRO TERMINAL · Kayser Enterprise</title>
+<script>
+/* Auto-Update / Cache-Selbstheilung: erzwingt auf jedem Geraet (v.a. Mobile-Safari) den
+   neuesten Stand. Beim Laden wird die frische Datei (no-store) geholt und die BUILD_ID
+   verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
+   Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
+(function(){
+  var BUILD_ID = '2026-06-24-A';
+  window.__BUILD_ID = BUILD_ID;
+  try {
+    var done = sessionStorage.getItem('__build_checked');
+    if (done === BUILD_ID) return;
+    fetch(location.pathname + '?_bust=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.text(); })
+      .then(function(t){
+        var m = t.match(/BUILD_ID\s*=\s*'([^']+)'/);
+        if (m && m[1] && m[1] !== BUILD_ID) {
+          sessionStorage.setItem('__build_checked', m[1]);
+          location.replace(location.pathname + '?v=' + encodeURIComponent(m[1]));
+        } else {
+          sessionStorage.setItem('__build_checked', BUILD_ID);
+        }
+      })
+      .catch(function(){});
+  } catch(e){}
+})();
+</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23050810'/%3E%3Ctext x='50%25' y='58%25' text-anchor='middle' fill='%2322d3ee' font-family='monospace' font-size='38' font-weight='bold'%3EK%3C/text%3E%3C/svg%3E">
 <style>
   :root {
