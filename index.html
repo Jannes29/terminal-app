@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-06-26-A';
+  var BUILD_ID = '2026-07-02-A';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -11477,6 +11477,10 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     { id:'ICSA',       lbl:'Initial Claims', cat:'us', tf:'lvl', unit:'k', impact:'growth' },
     { id:'CES0500000003', lbl:'Avg Hourly Earn.', cat:'us', tf:'yoy', unit:'%', impact:'inflation' },
     { id:'CIVPART',    lbl:'Labor Force Part.',  cat:'us', tf:'lvl', unit:'%', impact:'growth' },
+    { id:'JTSJOL',     lbl:'Job Openings (JOLTS)', cat:'us', tf:'lvl', unit:'k', impact:'growth' },
+    { id:'CCSA',       lbl:'Continued Claims',   cat:'us', tf:'lvl', unit:'k', impact:'growth' },
+    { id:'SAHMREALTIME', lbl:'Sahm-Regel (Rezession)', cat:'us', tf:'lvl', unit:'', impact:'growth' },
+    { id:'IC4WSA',     lbl:'Claims 4-Wk Avg',    cat:'us', tf:'lvl', unit:'k', impact:'growth' },
     // === PRIORITÄT: Währungs-Wirtschaftsdaten (früh laden, da langsamer Proxy) — UK/AU/NZ/CA/CH Inflation + Arbeitsmarkt ===
     { id:'GBRCPIALLMINMEI', lbl:'UK CPI',   cat:'uk', tf:'yoy', unit:'%', impact:'inflation' },
     { id:'LRHUTTTTGBM156S', lbl:'UK Unemployment',cat:'uk',tf:'lvl',unit:'%',impact:'growth' },
@@ -12223,12 +12227,18 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     if (!window.MACRO.fundamentals) window.MACRO.fundamentals = {};
     // Compute composite scores per impact-category as z-scaled aggregates
     const scores = { inflation:[], growth:[], rates:[], credit:[], liquidity:[], risk:[], commodity:[] };
+    // Serien, bei denen ein HOEHERER Wert NEGATIV fuer die Kategorie ist -> Vorzeichen drehen.
+    // Ohne das wuerde z.B. steigende Arbeitslosigkeit/Erstantraege den Wachstums-Score faelschlich HEBEN.
+    const INVERTED_SERIES = new Set(['UNRATE','ICSA','CCSA','IC4WSA','SAHMREALTIME',
+      'LRHUTTTTGBM156S','LRHUTTTTAUM156S','LRHUTTTTNZQ156S','LRHUTTTTCAM156S','LRHUTTTTCHQ156S','LRHUTTTTEZM156S','LRUNTTTTJPM156S',
+      'RRPONTSYD','WTREGEN']);
     for (const s of FRED_SERIES) {
       const c = cache[s.id]; if (!c || !c.raw || c.raw.length < 12) continue;
       const vals = c.raw.map(r => r.val);
       const mean = vals.reduce((a,b) => a + b, 0) / vals.length;
       const sd = Math.sqrt(vals.reduce((a,b) => a + (b - mean)**2, 0) / vals.length) || 1e-9;
-      const z = (vals[vals.length - 1] - mean) / sd;
+      let z = (vals[vals.length - 1] - mean) / sd;
+      if (INVERTED_SERIES.has(s.id)) z = -z; // hoeher = schwaecher (Arbeitslosigkeit, Claims, Liquiditaets-Abfluss)
       if (scores[s.impact]) scores[s.impact].push(z);
     }
     const fundFactors = {};
@@ -18152,6 +18162,16 @@ document.querySelectorAll('.bias-grid').forEach(grid => {
     // Platin/Palladium: kein eigener Treibersatz → sinnvoller Proxy aus Industrie-Nachfrage (Kupfer) + Edelmetall-Beta (Gold)
     s.XPT = Math.max(-1, Math.min(1, (s.XCU!=null?s.XCU:0)*0.6 + (s.XAU!=null?s.XAU:0)*0.2));
     s.XPD = s.XPT;
+    // === Fundamentals-Overlay: echte US-Wirtschaftsdaten (FRED z-Scores, vorzeichen-korrekt) nudgen
+    //     den USD-Bias konservativ. Starke Konjunktur/Inflation/Zinsen -> USD fester. Geklammert auf ±0.22,
+    //     damit ein einzelner Release die Bias nicht dominiert — es bleibt ein Mehrfaktor-Modell.
+    try {
+      const fund = (window.MACRO && window.MACRO.fundamentals) || {};
+      const g = fund.growth || 0, inf = fund.inflation || 0, rt = fund.rates || 0;
+      let usdNudge = 0.12 * g + 0.08 * inf + 0.10 * rt;
+      usdNudge = Math.max(-0.22, Math.min(0.22, usdNudge));
+      if (isFinite(usdNudge) && s.USD != null) s.USD = Math.max(-1, Math.min(1, s.USD + usdNudge));
+    } catch(e) { if (window.DEBUG) console.warn('[fund-overlay]', e); }
     window.BIAS_CONTRIBUTIONS = contributions;
     window.BIAS_COVERAGE = coverage;
     return s;
