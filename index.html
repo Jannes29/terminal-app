@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-07-02-A';
+  var BUILD_ID = '2026-07-09-A';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -2731,6 +2731,7 @@
           <div><div class="lbl">Strongest</div><div class="v" id="fxSentStrong" style="color:var(--green);">—</div></div>
           <div><div class="lbl">Weakest</div><div class="v" id="fxSentWeak" style="color:var(--red);">—</div></div>
         </div>
+        <div id="fxRegimePhase" style="margin-top:10px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;line-height:1.5;text-align:center;">Regime-Phase lädt…</div>
         <div class="fx-viz" id="fxSentBars" style="border-top:1px solid var(--line);margin-top:8px;padding-top:12px;"></div>
         <div class="source-foot" id="fxSentFoot">Live · classMacro · wartet auf macroUpdate</div>
       </div>
@@ -2809,6 +2810,63 @@
           }
           const foot = document.getElementById('fxSentFoot');
           if (foot) foot.textContent = 'Live · Risk-Barometer (Rohstoff vs. Haven + Regime) · ' + new Date().toLocaleTimeString('de-DE', {hour12: false});
+          try { computeRiskPhase(); } catch(e){ if(window.DEBUG) console.warn('[phase]', e); }
+        }
+        // === Mehrwochen-Risk-Regime (Phase) ===
+        // Bewusst TRAEGE Einschaetzung ueber Wochen (nicht der Tages-Snapshot oben), damit du echte
+        // Risk-On/Off-Phasen erkennst und ausnutzen kannst. Basis: 1M/3M-Aktien-Momentum (SPX/NAS/DAX/FTSE/Kupfer)
+        // + HY-Kredit-Spread-Trend (weiter werdende Spreads = risk-off). Zeigt Regime + wie lange es schon laeuft.
+        function computeRiskPhase(){
+          const el = document.getElementById('fxRegimePhase');
+          if (!el) return;
+          const R = (window.MACRO && window.MACRO.raw) || {};
+          const pf = (sym, field) => { const d = R[sym]; return d && typeof d[field] === 'number' ? d[field] : null; };
+          const riskSyms = ['SP:SPX','NASDAQ:NDX','XETR:DAX','FTSE:UKX','COMEX:HG1!'];
+          const p1 = riskSyms.map(s => pf(s,'Perf.1M')).filter(x => x != null);
+          const p3 = riskSyms.map(s => pf(s,'Perf.3M')).filter(x => x != null);
+          const eq1m = p1.length ? p1.reduce((a,b)=>a+b,0)/p1.length : 0;
+          const eq3m = p3.length ? p3.reduce((a,b)=>a+b,0)/p3.length : 0;
+          const eqMom = Math.max(-1, Math.min(1, 0.6*(eq1m/6) + 0.4*(eq3m/12)));
+          // Kredit-Trend aus FRED HY-OAS (weiter = risk-off)
+          let creditNorm = 0, creditChg = null;
+          try {
+            const cache = JSON.parse(localStorage.getItem('macro_fund_cache_v1')||'{}');
+            const hy = cache['BAMLH0A0HYM2'];
+            if (hy && hy.raw && hy.raw.length > 22) {
+              const now = hy.raw[hy.raw.length-1].val;
+              const ago = hy.raw[hy.raw.length-22].val; // ~1 Monat Handelstage
+              creditChg = now - ago;
+              creditNorm = Math.max(-1, Math.min(1, -creditChg/0.5)); // 0.5%-Ausweitung = klar risk-off
+            }
+          } catch(e){}
+          const phase = Math.max(-1, Math.min(1, 0.6*eqMom + 0.4*creditNorm));
+          const regime = phase >= 0.2 ? 'on' : phase <= -0.2 ? 'off' : 'neutral';
+          // Persistenz + Dauer (device-lokal; beim ersten Mal aus der Snapshot-Historie geschaetzt)
+          const now = Date.now();
+          let st; try { st = JSON.parse(localStorage.getItem('risk_phase_v1')||'null'); } catch(e){ st = null; }
+          if (!st || st.regime !== regime) {
+            let since = now;
+            try {
+              const hist = (window.MACRO_HISTORY && window.MACRO_HISTORY.load && window.MACRO_HISTORY.load()) || [];
+              for (let i = hist.length-1; i >= 0; i--) {
+                const h = hist[i]; if (!h || !h.cs) continue;
+                const c = (h.cs.AUD+h.cs.NZD+h.cs.CAD)/3 - (h.cs.JPY+h.cs.CHF+h.cs.USD)/3; // fxSpread-Proxy
+                const rs = c >= 0.03 ? 'on' : c <= -0.03 ? 'off' : 'neutral';
+                if (rs !== regime) break;
+                since = h.t || since;
+              }
+            } catch(e){}
+            st = { regime, since };
+            try { localStorage.setItem('risk_phase_v1', JSON.stringify(st)); } catch(e){}
+          }
+          const tage = Math.max(0, Math.round((now - st.since)/86400000));
+          const cfg = regime==='on'  ? {t:'RISK-ON-PHASE',  c:'#22c55e', bg:'rgba(34,197,94,0.10)',  bd:'rgba(34,197,94,0.45)', ic:'🟢'}
+                    : regime==='off' ? {t:'RISK-OFF-PHASE', c:'#ef4444', bg:'rgba(239,68,68,0.10)',  bd:'rgba(239,68,68,0.45)', ic:'🔴'}
+                    :                  {t:'ÜBERGANG · NEUTRAL', c:'#eab308', bg:'rgba(234,179,8,0.08)', bd:'rgba(234,179,8,0.4)', ic:'🟡'};
+          el.style.background = cfg.bg; el.style.borderColor = cfg.bd; el.style.color = cfg.c;
+          el.innerHTML = '<b style="letter-spacing:.4px;">REGIME · MEHRWOCHEN: '+cfg.ic+' '+cfg.t+'</b>'
+            + '<br><span style="color:#94a3b8;font-size:11px;">seit '+tage+' Tag'+(tage===1?'':'en')+' · Phasen-Score '+(phase>=0?'+':'')+phase.toFixed(2)
+            + ' · Aktien 1M '+(eq1m>=0?'+':'')+eq1m.toFixed(1)+'%'+(creditChg!=null?' · HY-Spread '+(creditChg>=0?'+':'')+creditChg.toFixed(2)+'pp':'')+'</span>';
         }
         window.addEventListener('macroUpdate', renderFxSentiment);
         window.addEventListener('historyUpdate', renderFxSentiment);
