@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-07-09-A';
+  var BUILD_ID = '2026-07-09-B';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -2764,7 +2764,7 @@
           try {
             const R = (window.MACRO && window.MACRO.raw) || {};
             const ch = s => { const d = R[s]; return d && typeof d.change === 'number' ? d.change : null; };
-            const onSyms  = ['SP:SPX','NASDAQ:NDX','XETR:DAX','FTSE:UKX','COMEX:HG1!','BINANCE:BTCUSDT'];
+            const onSyms  = ['AMEX:SPY','NASDAQ:QQQ','AMEX:DIA','AMEX:IWM','XETR:DAX','FTSE:UKX','COMEX:HG1!','BINANCE:BTCUSDT'];
             const offSyms = ['FX_IDC:USDJPY','FX_IDC:USDCHF']; // negative %-Aenderung = JPY/CHF staerker = risk-off
             const on  = onSyms.map(ch).filter(x => x != null);
             const off = offSyms.map(ch).filter(x => x != null).map(x => -x); // -USDxxx = Haven-Staerke
@@ -2821,7 +2821,7 @@
           if (!el) return;
           const R = (window.MACRO && window.MACRO.raw) || {};
           const pf = (sym, field) => { const d = R[sym]; return d && typeof d[field] === 'number' ? d[field] : null; };
-          const riskSyms = ['SP:SPX','NASDAQ:NDX','XETR:DAX','FTSE:UKX','COMEX:HG1!'];
+          const riskSyms = ['AMEX:SPY','NASDAQ:QQQ','AMEX:DIA','AMEX:IWM','XETR:DAX','FTSE:UKX','COMEX:HG1!'];
           const p1 = riskSyms.map(s => pf(s,'Perf.1M')).filter(x => x != null);
           const p3 = riskSyms.map(s => pf(s,'Perf.3M')).filter(x => x != null);
           const eq1m = p1.length ? p1.reduce((a,b)=>a+b,0)/p1.length : 0;
