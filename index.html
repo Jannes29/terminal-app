@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-07-26-C';
+  var BUILD_ID = '2026-07-27-A';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -4008,10 +4008,11 @@ n.filter(e=>e.rateFred).forEach(e=>{fetchFred(e.rateFred).then(n=>{null!=n&&(l[e
   </div>
 
   <div class="bias-method">
-    <strong>METHODIK:</strong> Bias-Wahrscheinlichkeit (% Up-Move) errechnet aus 8 Faktoren —
-    Notenbank-Stance · Zins-Differential · Inflation · COT-Positionierung · Saisonalität ·
-    Geopolitik (Nahost/Energie) · Wachstums-Differential · Technische Konsens.
-    Werte 0-100. <strong>&gt;55 = UP-Bias · &lt;45 = DOWN-Bias · 45-55 = Neutral</strong>. Live · TradingView Scanner.
+    <strong>METHODIK:</strong> Bias-Wahrscheinlichkeit (% Up-Move) aus <strong>8 thematischen Faktor-Kategorien</strong> —
+    Notenbank-Stance · Zins-Differential · Inflation · Wachstum · Kredit/Liquidität · Geopolitik (Live-News) ·
+    Positionierung/Saisonalität · Technische Konsens. Diese werden intern aus <strong>~87 FRED-Wirtschaftsserien + 100+ Live-Marktsymbolen</strong>
+    aggregiert (rund 115 z-skalierte Einzelfaktoren). Werte 0-100 · <strong>&gt;55 = UP-Bias · &lt;45 = DOWN-Bias · 45-55 = Neutral</strong> ·
+    zeit-geglättet (EMA) + Hysterese für Stabilität. Live · FRED · TradingView Scanner.
   </div>
 
   <!-- ===== LIVE MACRO FUNDAMENTALS STRIP ===== -->
