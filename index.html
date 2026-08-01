@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-07-27-D';
+  var BUILD_ID = '2026-07-27-E';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -9941,5 +9941,16 @@ window.addEventListener("eiaUpdate",()=>{t.classList.contains("open")&&render()}
 ["treasuryUpdate","fearGreedUpdate","defiUpdate","mempoolUpdate","derivUpdate","yahooVolsUpdate","sofrUpdate","gdpnowUpdate","calendarUpdate","vixTermUpdate","sectorUpdate","breakUpdate","hawkDoveUpdate","earningsUpdate"].forEach(e=>{window.addEventListener(e,()=>{
 t.classList.contains("open")&&render()})})}();</script>
 
+<script>!function(){
+const e=new Set(["CHINA_PMI","GLOBAL_PMI","EU_PMI_COMP","EU_PMI_MFG","UK_PMI_SERVICES","IRON_ORE","UK_CA_DEFICIT","JP_CA_SURPLUS","EU_TERMS_OF_TRADE","AI_CAPEX_PROXY","SEMIS_SOX","EARNINGS_REVISIONS","SOLAR_PV_DEMAND","LME_INVENTORY","EV_GREEN_CAPEX","CHILE_SUPPLY_DISRUPT","WCS_BRENT_DIFF","NIKKEI","EURCHF","GBP_USD","AUDNZD","COPPER","OPEC_PRODUCTION"]),_=/^(DXY|VIX|MOVE|US_REAL_10Y|US_BREAKEVEN_10Y|.*_2Y_SPREAD|BUND_10Y|GILT_10Y|BUND_BTP_SPREAD|GOLD|WTI|BRENT|XAU|XAG|EUR|GBP|NGAS_TTF)$/,t=/LABOR|_INFLATION|HOUSING|RETAIL|WAGE|INDUSTRIAL|CONSUMER_CONF|BANK_LENDING|_GROWTH|ISM|DOLLAR_LIQUIDITY|GLOBAL_M2|^OECD|RATE_SURPRISE|YCC|CREDIT_IMPULSE|HY_OAS|YIELD_CURVE|VIX_CONTANGO/,n=/GPR|BREXIT/,E=/CFTC|CB_GOLD|PBOC|RESERVES/,o={
+HY_OAS:"Kreditspread",US_HY_OAS:"Kreditspread",YIELD_CURVE_10Y3M:"Zinskurve",US_REAL_10Y:"Realzins",US_LABOR:"Arbeitsmarkt",US_INFLATION:"Inflation",US_HOUSING:"Baugenehm.",US_ISM_MFG:"ISM/Wachstum",US_CONSUMER_CONF:"Konsumklima",US_BANK_LENDING:"Kreditvergabe",VIX:"Vola",VIX_CONTANGO:"Vola-Term",
+MOVE:"Zins-Vola",DXY:"Dollar",FED_RATE_SURPRISE:"Fed-Ton",ECB_RATE_SURPRISE:"EZB-Ton",BOJ_YCC_SHIFT:"BoJ-Ton",GPR_GLOBAL:"Geopolitik",GPR_EUROPE:"Geopol.-EU",GPR_ASIA:"Geopol.-Asien",GPR_MIDEAST:"Geopol.-Nahost",CHINA_PMI:"China",CHINA_CREDIT_IMPULSE:"China-Kredit",IRON_ORE:"Eisenerz-Proxy",
+GOLD:"Goldtrend",WTI:"Öl",CB_GOLD_BUYING:"Notenbank-Gold",GLOBAL_DOLLAR_LIQUIDITY:"USD-Liquidität",US_EU_2Y_SPREAD:"Zinsdiff.",EU_US_2Y_SPREAD:"Zinsdiff.",SEMIS_SOX:"Halbleiter"};function render(){const r=window.BIAS_CONTRIBUTIONS||{}
+;Object.keys(r).length&&document.querySelectorAll(".bias-card").forEach(I=>{const a=I.querySelector(".bias-card-head .sym")?.textContent.trim();if(!a||!r[a]||!r[a].length)return;const s=r[a],S={preis:0,fund:0,geo:0,pos:0};s.forEach(o=>{S[function cat(o){
+return n.test(o)?"geo":E.test(o)?"pos":t.test(o)?"fund":(e.has(o)||_.test(o),"preis")}(o.name)]+=Math.abs(o.w)});const i=S.preis+S.fund+S.geo+S.pos||1,R=Math.round(S.fund/i*100),A=Math.round(S.preis/i*100),O=Math.round((S.geo+S.pos)/i*100),U=s.slice(0,3).map(e=>function lab(e){
+return o[e]||e.replace(/_/g," ").toLowerCase().slice(0,14)}(e.name)).join(" · ");let d=I.querySelector(".bias-attrib");d||(d=document.createElement("div"),d.className="bias-attrib",
+d.style.cssText="margin:6px 10px 8px;padding:6px 8px;border-top:1px solid rgba(255,255,255,0.06);font-size:9.5px;line-height:1.55;",I.appendChild(d)),
+d.innerHTML='<span style="color:#4ade80;font-weight:700;">Fundamental '+R+'%</span> · <span style="color:#fbbf24;">Preis '+A+"%</span>"+(O>0?' · <span style="color:#67e8f9;">Geo/Pos '+O+"%</span>":"")+'<br><span style="color:var(--text-2,#8492a6);">Treiber: '+U+"</span>"})}
+window.addEventListener("macroUpdate",render),window.addEventListener("historyUpdate",render),setTimeout(render,3500),setInterval(render,2e4)}();</script>
 </body>
 </html>
