@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-08-02-H';
+  var BUILD_ID = '2026-08-03-A';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -10112,10 +10112,10 @@ window.ECON_SURPRISE_META={cnt:e.cnt,ts:Date.now()},render(e);try{window.dispatc
 ;const n=e&&e.cnt||(window.ECON_SURPRISE_META||{}).cnt||{},i=e&&e.idx||window.ECON_SURPRISE||{},a=r.filter(e=>null!=i[e]);a.length?t.innerHTML=a.map(e=>{const t=i[e],r=t>.02?"#22c55e":t<-.02?"#ef4444":"#eab308"
 ;return`<div style="border:1px solid ${r}55;border-radius:8px;padding:8px 12px;min-width:88px;">\n        <div style="font-weight:800;font-size:13px;">${e}</div>\n        <div style="color:${r};font-weight:700;font-size:15px;">${t>=0?"+":""}${(100*t).toFixed(0)}</div>\n        <div style="font-size:9px;color:var(--text-2);">${n[e]||0} Releases</div></div>`
 }).join(""):t.innerHTML='<span style="font-size:11px;color:var(--text-2);">Noch keine veröffentlichten Ist-Werte diese Woche (Kalender geladen · Überraschungen erscheinen mit den Releases Mo–Fr).</span>'}async function refresh(i){try{const t=JSON.parse(localStorage.getItem(e)||"null")
-;if(t&&!i&&Date.now()-t.ts<108e5)return void apply({idx:t.idx,cnt:t.cnt})}catch(e){}const a=await async function fetchCal(){const e=["https://r.jina.ai/"+t,t];for(const t of e)try{const e=new AbortController,n=setTimeout(()=>e.abort(),35e3),r=await fetch(t,{cache:"no-store",signal:e.signal})
-;if(clearTimeout(n),!r||!r.ok)continue;const i=await r.text();let a=null;try{const e=JSON.parse(i);Array.isArray(e)?a=e:e&&e.data&&e.data.text&&(a=JSON.parse(e.data.text))}catch(e){}if(a&&a.length)return a}catch(e){}return null}();if(a){const t=function aggregate(e){const t={};(e||[]).forEach(e=>{
-if(!e||"High"!==e.impact&&"Medium"!==e.impact)return;if(r.indexOf(e.country)<0)return;const i=parseVal(e.forecast),a=parseVal(e.actual);if(null==i||null==a)return;let c=(a-i)/(Math.abs(i)>1e-9?Math.abs(i):1);n.test(e.title||"")&&(c=-c),c=Math.max(-1,Math.min(1,c)),
-(t[e.country]=t[e.country]||[]).push(c)});const i={},a={};return Object.keys(t).forEach(e=>{i[e]=t[e].reduce((e,t)=>e+t,0)/t[e].length,a[e]=t[e].length}),{idx:i,cnt:a}}(a);try{localStorage.setItem(e,JSON.stringify({ts:Date.now(),idx:t.idx,cnt:t.cnt}))}catch(e){}apply(t)}else try{
-const t=JSON.parse(localStorage.getItem(e)||"null");t?apply({idx:t.idx,cnt:t.cnt}):render()}catch(e){render()}}window.refreshEconSurprise=()=>refresh(!0),setTimeout(()=>refresh(!1),8e3),setInterval(()=>refresh(!1),36e5)}();</script>
+;if(t&&!i&&Date.now()-t.ts<108e5)return void apply({idx:t.idx,cnt:t.cnt})}catch(e){}const a=await async function fetchCal(){const e=["https://r.jina.ai/"+t,t];for(const t of e)try{const e=new AbortController,n=setTimeout(()=>e.abort(),35e3),r=t.indexOf("r.jina.ai")>=0?{"X-Return-Format":"text",
+Accept:"application/json"}:{},i=await fetch(t,{cache:"no-store",signal:e.signal,headers:r});if(clearTimeout(n),!i||!i.ok)continue;const a=await i.text();let c=null;try{const e=JSON.parse(a);Array.isArray(e)?c=e:e&&e.data&&e.data.text&&(c=JSON.parse(e.data.text))}catch(e){}if(c&&c.length)return c
+}catch(e){}return null}();if(a){const t=function aggregate(e){const t={};(e||[]).forEach(e=>{if(!e||"High"!==e.impact&&"Medium"!==e.impact)return;if(r.indexOf(e.country)<0)return;const i=parseVal(e.forecast),a=parseVal(e.actual);if(null==i||null==a)return;let c=(a-i)/(Math.abs(i)>1e-9?Math.abs(i):1)
+;n.test(e.title||"")&&(c=-c),c=Math.max(-1,Math.min(1,c)),(t[e.country]=t[e.country]||[]).push(c)});const i={},a={};return Object.keys(t).forEach(e=>{i[e]=t[e].reduce((e,t)=>e+t,0)/t[e].length,a[e]=t[e].length}),{idx:i,cnt:a}}(a);try{localStorage.setItem(e,JSON.stringify({ts:Date.now(),idx:t.idx,
+cnt:t.cnt}))}catch(e){}apply(t)}else try{const t=JSON.parse(localStorage.getItem(e)||"null");t?apply({idx:t.idx,cnt:t.cnt}):render()}catch(e){render()}}window.refreshEconSurprise=()=>refresh(!0),setTimeout(()=>refresh(!1),8e3),setInterval(()=>refresh(!1),36e5)}();</script>
 </body>
 </html>
