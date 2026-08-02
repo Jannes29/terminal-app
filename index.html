@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-08-03-A';
+  var BUILD_ID = '2026-08-03-B';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -4079,6 +4079,17 @@ n.filter(e=>e.rateFred).forEach(e=>{fetchFred(e.rateFred).then(n=>{null!=n&&(l[e
   <div style="border:1px solid var(--line);border-radius:10px;padding:14px;">
     <div style="font-weight:700;font-size:12px;margin-bottom:10px;color:var(--text-0);">Schlüssel-Indikatoren · Verlauf (letzte ~2 Jahre, FRED)</div>
     <div id="mdCharts" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;"></div>
+  </div>
+</div>
+
+<!-- ====== SECTION 12E: VORWÄRTS-VALIDIERUNG (Live-Modell, out-of-sample) ====== -->
+<div class="section">
+  <div class="section-head">
+    <h2>12E · <em>Vorwärts-Validierung</em> · Live-Modell (out-of-sample)<span class="powers-badge">echte Zukunfts-Treffer, kein Backtest</span></h2>
+    <div class="meta">Friert täglich die Bias-Vorhersagen ein &amp; prüft sie bei Reife (30/60/90T) gegen die echte Kursbewegung · nur das aktuelle Modell · ehrlichster Test</div>
+  </div>
+  <div id="mdFwdVal" style="border:1px solid var(--line);border-radius:12px;padding:18px;">
+    <span style="color:var(--text-2);font-size:12px;">Vorwärts-Validierung initialisiert — friert ab jetzt täglich Vorhersagen ein. Erste 30-Tage-Auswertung nach ~30 Handelstagen.</span>
   </div>
 </div>
 
@@ -10117,5 +10128,93 @@ Accept:"application/json"}:{},i=await fetch(t,{cache:"no-store",signal:e.signal,
 }catch(e){}return null}();if(a){const t=function aggregate(e){const t={};(e||[]).forEach(e=>{if(!e||"High"!==e.impact&&"Medium"!==e.impact)return;if(r.indexOf(e.country)<0)return;const i=parseVal(e.forecast),a=parseVal(e.actual);if(null==i||null==a)return;let c=(a-i)/(Math.abs(i)>1e-9?Math.abs(i):1)
 ;n.test(e.title||"")&&(c=-c),c=Math.max(-1,Math.min(1,c)),(t[e.country]=t[e.country]||[]).push(c)});const i={},a={};return Object.keys(t).forEach(e=>{i[e]=t[e].reduce((e,t)=>e+t,0)/t[e].length,a[e]=t[e].length}),{idx:i,cnt:a}}(a);try{localStorage.setItem(e,JSON.stringify({ts:Date.now(),idx:t.idx,
 cnt:t.cnt}))}catch(e){}apply(t)}else try{const t=JSON.parse(localStorage.getItem(e)||"null");t?apply({idx:t.idx,cnt:t.cnt}):render()}catch(e){render()}}window.refreshEconSurprise=()=>refresh(!0),setTimeout(()=>refresh(!1),8e3),setInterval(()=>refresh(!1),36e5)}();</script>
+
+<script>
+/* ===== VORWÄRTS-VALIDIERUNG: friert Live-Vorhersagen ein, prüft sie bei Reife gegen echte Kurse ===== */
+(function(){
+  const KEY='fwd_valid_v1';
+  const TV={ NAS100:'NASDAQ:NDX',SPX500:'SP:SPX',GER40:'XETR:DAX',FTSE:'FTSE:UKX',
+    XAU:'TVC:GOLD',XAG:'TVC:SILVER',XCU:'COMEX:HG1!',XPT:'NYMEX:PL1!',XPD:'NYMEX:PA1!',
+    WTI:'TVC:USOIL',BRENT:'TVC:UKOIL',NGAS:'TVC:NGAS',
+    ZW:'CBOT:ZW1!',ZC:'CBOT:ZC1!',ZS:'CBOT:ZS1!',KC:'ICEUS:KC1!',SB:'ICEUS:SB1!',CC:'ICEUS:CC1!',CT:'ICEUS:CT1!',
+    BTC:'BINANCE:BTCUSDT',ETH:'BINANCE:ETHUSDT',SOL:'BINANCE:SOLUSDT' };
+  function priceOf(sym){
+    const m=window.MACRO&&window.MACRO.raw; const tv=TV[sym]; if(!m||!tv) return null;
+    const d=m[tv]; if(!d) return null;
+    const p=(d.close!=null?d.close:(d.lp!=null?d.lp:(d.price!=null?d.price:(d.c!=null?d.c:null))));
+    return (typeof p==='number'&&isFinite(p)&&p>0)?p:null;
+  }
+  function load(){ try{return JSON.parse(localStorage.getItem(KEY)||'{"recs":[]}');}catch(e){return {recs:[]};} }
+  function save(o){ try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e){} }
+  const dkey=ts=>new Date(ts||Date.now()).toISOString().slice(0,10);
+  const DAY=864e5;
+  function record(){
+    const store=load(), today=dkey(), build=window.__BUILD_ID||'?';
+    let added=0;
+    document.querySelectorAll('.bias-card').forEach(card=>{
+      const symEl=card.querySelector('.bias-card-head .sym'); if(!symEl) return;
+      const s=symEl.textContent.trim(); if(!TV[s]) return;
+      const vals=card.querySelectorAll('.bias-cell .val');
+      const b30=parseInt(vals[0]&&vals[0].textContent,10),b60=parseInt(vals[1]&&vals[1].textContent,10),b90=parseInt(vals[2]&&vals[2].textContent,10);
+      if(isNaN(b30)||isNaN(b60)||isNaN(b90)) return;
+      const px=priceOf(s); if(px==null) return;
+      if(store.recs.some(r=>r.sym===s&&r.d===today)) return;   // je Tag/Asset nur 1×
+      store.recs.push({d:today,ts:Date.now(),sym:s,build,b30,b60,b90,px,sc:{}}); added++;
+    });
+    const cut=Date.now()-150*DAY; store.recs=store.recs.filter(r=>r.ts>=cut);
+    if(added) save(store);
+    evaluate();
+  }
+  function evaluate(){
+    const store=load(); let changed=false;
+    store.recs.forEach(r=>{
+      const cur=priceOf(r.sym);
+      [30,60,90].forEach(h=>{
+        if(r.sc[h]!=null) return;
+        if(Date.now()-r.ts < h*DAY) return;
+        if(cur==null) return;
+        const bias=r['b'+h];
+        if(bias>=52||bias<=48){ const up=bias>50, mv=cur-r.px; r.sc[h]=((up&&mv>0)||(!up&&mv<0))?1:0; }
+        else r.sc[h]=-1;   // neutral → nicht gewertet
+        changed=true;
+      });
+    });
+    if(changed) save(store);
+    render(store);
+  }
+  function render(store){
+    const el=document.getElementById('mdFwdVal'); if(!el) return;
+    const recs=store.recs||[];
+    if(!recs.length){ el.innerHTML='<span style="color:var(--text-2);font-size:12px;">Noch keine Vorhersagen eingefroren — Bias &amp; Preise laden…</span>'; return; }
+    const dates=recs.map(r=>r.d).sort();
+    const since=dates[0];
+    const agg={30:{n:0,w:0},60:{n:0,w:0},90:{n:0,w:0}};
+    let frozen=0;
+    recs.forEach(r=>{ frozen++; [30,60,90].forEach(h=>{ const v=r.sc[h]; if(v===0||v===1){ agg[h].n++; agg[h].w+=v; } }); });
+    const tile=(h)=>{ const a=agg[h]; const wr=a.n?(100*a.w/a.n):null; const reif=a.n>=15;
+      const col=wr==null?'#64748b':(wr>=55?'#22c55e':wr>=50?'#eab308':'#ef4444');
+      return `<div style="flex:1;min-width:150px;border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:11px;color:var(--text-2);">${h}-Tage-Horizont</div>
+        <div style="font-size:26px;font-weight:800;color:${col};margin:4px 0;">${wr!=null?wr.toFixed(0)+'%':'—'}</div>
+        <div style="font-size:10px;color:var(--text-2);">${a.n} reife Vorhersagen${reif?'':' · reift noch'}</div></div>`; };
+    const totalMatured=agg[30].n+agg[60].n+agg[90].n;
+    el.innerHTML=
+      `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">${tile(30)}${tile(60)}${tile(90)}</div>`+
+      `<div style="font-size:11px;color:var(--text-1);line-height:1.7;">`+
+        `<b>${frozen}</b> eingefrorene Vorhersagen seit <b>${since}</b> über <b>${new Set(recs.map(r=>r.sym)).size}</b> Assets (Indizes/Rohstoffe/Krypto). `+
+        (totalMatured===0
+          ? `Noch <b>keine</b> Vorhersage reif (erste 30-Tage-Auswertung ~30 Tage nach dem ersten Öffnen). Der Tracker sammelt weiter, sobald du den Terminal öffnest.`
+          : `<b>${totalMatured}</b> Vorhersagen bereits ausgewertet. Nur klare Richtungen (|Bias|&gt;2) zählen; neutrale werden übersprungen.`)+
+      `</div>`+
+      `<div style="font-size:10px;color:var(--text-2);margin-top:10px;border-top:1px solid var(--line);padding-top:8px;">`+
+        `<b>Der ehrlichste Test:</b> Das ist <b>kein</b> Backtest und keine Optimierung, sondern echte Out-of-Sample-Zukunft des aktuellen Live-Modells. `+
+        `Aussagekräftig ab ~15–20 reifen Vorhersagen je Horizont. FX-Währungen folgen (brauchen Index-Proxies). Erwartungsrahmen: ~52–56% — alles darüber wäre außergewöhnlich.</div>`;
+  }
+  window.fwdValRecord=record; window.fwdValReset=()=>{ localStorage.removeItem(KEY); render({recs:[]}); };
+  window.addEventListener('macroUpdate', ()=>{ setTimeout(record, 500); });
+  setTimeout(record, 20000);          // initial nach Laden der Bias-Karten
+  setInterval(record, 30*60*1000);    // alle 30 Min einfrieren/prüfen
+})();
+</script>
 </body>
 </html>
