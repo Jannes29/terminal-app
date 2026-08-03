@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-08-03-K';
+  var BUILD_ID = '2026-08-04-A';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -8053,7 +8053,7 @@ const e=n(a.fxa_trend);return n(a.regional_em),null!=e?e/3:0}case"BRAZIL_BRL":{c
 const e=window.EIA_INVENTORY||{};return null!=n(e.crudeWow)?e.crudeWow/1.5:0}case"EIA_STORAGE":{const e=window.EIA_INVENTORY||{};return null!=n(e.ngWow)?e.ngWow/2:0}case"LNG_EXPORT_FLOWS":return null!=n(a.natgas_trend)?a.natgas_trend/12:0;case"US_HDD_CDD":{const e=window.WEATHER;if(!e)return 0
 ;const a=[e.US_PLAINS,e.US_MIDWEST,e.US_TEXAS].filter(Boolean);return 0===a.length?0:a.reduce((e,a)=>e+Math.abs(a.heatAnom||0),0)/a.length/1.5}case"HURRICANE_GULF":{const e=(new Date).getMonth();return[7,8,9].includes(e)?1.5:[5,6,10].includes(e)?.7:-.3}case"US_SHALE_RIG_COUNT":
 return null!=n(a.energy_perf)?-a.energy_perf/5:0;case"US_PLAINS_WEATHER":{const e=window.WEATHER?.US_PLAINS;return e?e.score:0}case"US_MIDWEST_WEATHER":{const e=window.WEATHER?.US_MIDWEST;return e?e.score:0}case"US_TEXAS_WEATHER":{const e=window.WEATHER?.US_TEXAS;return e?e.score:0}
-case"BRAZIL_WEATHER":{const e=window.WEATHER?.BRAZIL_MT,a=window.WEATHER?.BRAZIL_CS,s=window.WEATHER?.BRAZIL_MG,l=[e,a,s].filter(Boolean);return l.length?l.reduce((e,a)=>e+a.score,0)/l.length:0}case"W_AFRICA_WEATHER":{
+case"BRAZIL_WEATHER":{const e=window.WEATHER?.BRAZIL_MT,a=window.WEATHER?.BRAZIL_CS,s=window.WEATHER?.BRAZIL_MG,l=window.WEATHER?.BRAZIL_PR,t=[e,a,s,l].filter(Boolean);return t.length?t.reduce((e,a)=>e+a.score,0)/t.length:0}case"W_AFRICA_WEATHER":{
 const e=window.WEATHER?.IVORY_COAST,a=window.WEATHER?.GHANA,s=[e,a].filter(Boolean);return s.length?s.reduce((e,a)=>e+a.score,0)/s.length:0}case"INDIA_MONSOON":{const e=window.WEATHER?.INDIA_NW;return e?e.score:0}case"VIETNAM_ROBUSTA":{const e=window.WEATHER?.VIETNAM_CH;return e?e.score:0}
 case"COLOMBIA_OUTPUT":{const e=window.WEATHER?.COLOMBIA;return e?e.score:0}case"BRAZIL_SAFRINHA":{const e=window.WEATHER?.BRAZIL_MT;return e?e.score:0}case"CRUSH_MARGIN":{const e=n(a.oil_trend_1m),s=n(a.dba_agrar);return null!=e&&null!=s?(e-s)/4:0}case"ICE_COCOA_STOCKS":case"ICE_CERTIFIED_STOCKS":{
 const e=n(a.dba_agrar);return null!=e?-e/5:0}case"BLACK_POD_SWOLLEN":{const e=window.WEATHER?.IVORY_COAST,a=window.WEATHER?.GHANA,s=[e,a].filter(Boolean);return 0===s.length?0:-(s.reduce((e,a)=>e+(a.sumPrec14d||0),0)/s.length-80)/50}case"GHANA_IVORY_FARMGATE":{const e=new Date
@@ -9840,17 +9840,17 @@ if(!s.target.matches("input, textarea, select, [contenteditable]")&&!(s.metaKey|
      driver sign=-1)
      ==================================================================== -->
 <script>!function(){const e={US_PLAINS:{lat:39.1,lon:-94.58,label:"KS/OK Wheat",precipNorm:30,tempNorm:26,season:[4,5,6,7,8]},US_MIDWEST:{lat:41.59,lon:-93.62,label:"IA/IL Corn-Soy",precipNorm:35,tempNorm:25,season:[5,6,7,8,9]},US_TEXAS:{lat:33.58,lon:-101.86,label:"TX Cotton",precipNorm:25,tempNorm:30,
-season:[4,5,6,7,8,9]},BRAZIL_MT:{lat:-15.6,lon:-56.1,label:"MT Soybeans",precipNorm:90,tempNorm:28,season:[9,10,11,0,1,2]},BRAZIL_MG:{lat:-19.82,lon:-43.95,label:"MG Coffee",precipNorm:60,tempNorm:22,season:[9,10,11,0,1,2,3]},BRAZIL_CS:{lat:-22.91,lon:-47.06,label:"Center-South Cane",precipNorm:50,
-tempNorm:24,season:[3,4,5,6,7,8]},IVORY_COAST:{lat:6.83,lon:-5.29,label:"Ivory Coast Cocoa",precipNorm:70,tempNorm:27,season:[9,10,11,0,1,2]},GHANA:{lat:5.6,lon:-.19,label:"Ghana Cocoa",precipNorm:60,tempNorm:27,season:[9,10,11,0,1,2]},INDIA_NW:{lat:28.61,lon:77.21,label:"NW India Cotton",
-precipNorm:50,tempNorm:30,season:[5,6,7,8]},VIETNAM_CH:{lat:12.68,lon:108.04,label:"Central HL Robusta",precipNorm:80,tempNorm:23,season:[3,4,5,6,7,8,9,10]},COLOMBIA:{lat:4.71,lon:-74.07,label:"Andean Coffee",precipNorm:70,tempNorm:20,season:[2,3,4,8,9,10]}};async function fetchWeather(){try{
-const t=JSON.parse(localStorage.getItem("weather_v1")||"{}");if(t.ts&&Date.now()-t.ts<216e5&&t.data)return window.WEATHER=t.data,void window.dispatchEvent(new CustomEvent("weatherUpdate"));const o=[e=>e,e=>`https://corsproxy.io/?${encodeURIComponent(e)}`],tryFetch=async e=>{for(const t of o)try{
-const o=await fetch(t(e),{mode:"cors"});if(o.ok)return await o.json()}catch(e){window.DEBUG&&console.warn("[caught]",e)}return null},a={},n=(new Date).getMonth();for(const t of Object.keys(e)){
-const o=e[t],r=`https://api.open-meteo.com/v1/forecast?latitude=${o.lat}&longitude=${o.lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&past_days=14&forecast_days=7&timezone=auto`,s=await tryFetch(r);if(!s?.daily)continue
-;const l=s.daily.temperature_2m_max||[],i=s.daily.precipitation_sum||[];if(0===l.length||0===i.length)continue
-;const m=l.slice(0,14),c=i.slice(0,14),p=m.reduce((e,t)=>e+(t||0),0)/Math.max(m.length,1),d=c.reduce((e,t)=>e+(t||0),0),h=(p-o.tempNorm)/3.5,N=(o.precipNorm-d)/Math.max(.6*o.precipNorm,10),u=o.season.includes(n)?1:.4;let w=(.35*h+.65*N)*u;w=Math.max(-3,Math.min(3,w)),a[t]={score:+(-w).toFixed(2),
-stress:+w.toFixed(2),avgTMax:+p.toFixed(1),sumPrec14d:+d.toFixed(1),heatAnom:+h.toFixed(2),droughtAnom:+N.toFixed(2),inSeason:u,label:o.label}}if(0===Object.keys(a).length)return;window.WEATHER=a,localStorage.setItem("weather_v1",JSON.stringify({ts:Date.now(),data:a})),
-window.dispatchEvent(new CustomEvent("weatherUpdate")),console.log("[WEATHER] regions loaded:",Object.keys(a).length,"· stress sample:",Object.entries(a).slice(0,3).map(([e,t])=>e+"="+t.stress))}catch(e){console.warn("[WEATHER] failed",e.message)}}setTimeout(fetchWeather,7e3),
-setInterval(fetchWeather,216e5),window.refreshWeather=fetchWeather}();</script>
+season:[4,5,6,7,8,9]},BRAZIL_MT:{lat:-15.6,lon:-56.1,label:"MT Soybeans",precipNorm:90,tempNorm:28,season:[9,10,11,0,1,2]},BRAZIL_MG:{lat:-19.82,lon:-43.95,label:"MG Coffee",precipNorm:60,tempNorm:22,season:[9,10,11,0,1,2,3],frostSens:!0},BRAZIL_PR:{lat:-23.3,lon:-51.16,
+label:"Paraná Coffee (Frost)",precipNorm:55,tempNorm:21,season:[5,6,7],frostSens:!0},BRAZIL_CS:{lat:-22.91,lon:-47.06,label:"Center-South Cane",precipNorm:50,tempNorm:24,season:[3,4,5,6,7,8]},IVORY_COAST:{lat:6.83,lon:-5.29,label:"Ivory Coast Cocoa",precipNorm:70,tempNorm:27,season:[9,10,11,0,1,2]},
+GHANA:{lat:5.6,lon:-.19,label:"Ghana Cocoa",precipNorm:60,tempNorm:27,season:[9,10,11,0,1,2]},INDIA_NW:{lat:28.61,lon:77.21,label:"NW India Cotton",precipNorm:50,tempNorm:30,season:[5,6,7,8]},VIETNAM_CH:{lat:12.68,lon:108.04,label:"Central HL Robusta",precipNorm:80,tempNorm:23,
+season:[3,4,5,6,7,8,9,10]},COLOMBIA:{lat:4.71,lon:-74.07,label:"Andean Coffee",precipNorm:70,tempNorm:20,season:[2,3,4,8,9,10]}};async function fetchWeather(){try{const t=JSON.parse(localStorage.getItem("weather_v1")||"{}");if(t.ts&&Date.now()-t.ts<216e5&&t.data)return window.WEATHER=t.data,
+void window.dispatchEvent(new CustomEvent("weatherUpdate"));const o=[e=>e,e=>`https://corsproxy.io/?${encodeURIComponent(e)}`],tryFetch=async e=>{for(const t of o)try{const o=await fetch(t(e),{mode:"cors"});if(o.ok)return await o.json()}catch(e){window.DEBUG&&console.warn("[caught]",e)}return null
+},a={},n=(new Date).getMonth();for(const t of Object.keys(e)){const o=e[t],r=`https://api.open-meteo.com/v1/forecast?latitude=${o.lat}&longitude=${o.lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&past_days=14&forecast_days=7&timezone=auto`,s=await tryFetch(r)
+;if(!s?.daily)continue;const l=s.daily.temperature_2m_max||[],i=s.daily.temperature_2m_min||[],m=s.daily.precipitation_sum||[];if(0===l.length||0===m.length)continue
+;const c=l.slice(0,14),p=m.slice(0,14),d=c.reduce((e,t)=>e+(t||0),0)/Math.max(c.length,1),h=p.reduce((e,t)=>e+(t||0),0),N=(d-o.tempNorm)/3.5,f=(o.precipNorm-h)/Math.max(.6*o.precipNorm,10),u=o.season.includes(n)?1:.4,w=i.filter(e=>"number"==typeof e),_=w.length?Math.min(...w):99;let b=0
+;o.frostSens&&[5,6,7].includes(n)&&_<4&&(b=Math.min(3,.8*(4-_)));let y=(.35*N+.65*f)*u+b;y=Math.max(-3,Math.min(3,y)),a[t]={score:+(-y).toFixed(2),stress:+y.toFixed(2),avgTMax:+d.toFixed(1),minTmin:+_.toFixed(1),frost:+b.toFixed(2),sumPrec14d:+h.toFixed(1),heatAnom:+N.toFixed(2),
+droughtAnom:+f.toFixed(2),inSeason:u,label:o.label}}if(0===Object.keys(a).length)return;window.WEATHER=a,localStorage.setItem("weather_v1",JSON.stringify({ts:Date.now(),data:a})),window.dispatchEvent(new CustomEvent("weatherUpdate")),
+console.log("[WEATHER] regions loaded:",Object.keys(a).length,"· stress sample:",Object.entries(a).slice(0,3).map(([e,t])=>e+"="+t.stress))}catch(e){console.warn("[WEATHER] failed",e.message)}}setTimeout(fetchWeather,7e3),setInterval(fetchWeather,216e5),window.refreshWeather=fetchWeather}();</script>
 
 <!-- ====================================================================
      WIRTSCHAFTSVERSTÄNDNIS-LAYER · 7 Module für Macro-Awareness
