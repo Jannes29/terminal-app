@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-08-03-I';
+  var BUILD_ID = '2026-08-03-J';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -7969,7 +7969,7 @@ source:"OECD CLI Kanada (frisch)"},{name:"CA_YIELD_CURVE",sign:1,weight:.07,lag_
 sign:-1,weight:.06,lag_days:1,source:"Alberta heavy diff"},{name:"SURPRISE_CAD",sign:1,weight:.06,lag_days:0,source:"Ist-vs-Konsens (Kalender)"}],USD:[{name:"US_REAL_10Y",sign:1,weight:.23,lag_days:0,source:"Engel-Wu 2018"},{name:"US_EU_2Y_SPREAD",sign:1,weight:.16,lag_days:0,
 source:"Stavrakeva-Tang 2020"},{name:"VIX",sign:1,weight:.12,lag_days:0,source:"Maggiori 2017 reserve"},{name:"GPR_GLOBAL",sign:1,weight:.1,lag_days:0,source:"Caldara-Iacoviello 2022"},{name:"FED_RATE_SURPRISE",sign:1,weight:.1,lag_days:1,source:"Kuttner 2001"},{name:"US_ISM_MFG",sign:1,weight:.07,
 lag_days:1,source:"growth-yield channel"},{name:"HY_OAS",sign:1,weight:.05,lag_days:0,source:"Clarida dollar smile"},{name:"GLOBAL_DOLLAR_LIQUIDITY",sign:-1,weight:.05,lag_days:5,source:"BIS Avdjiev 2019"},{name:"US_FIN_CONDITIONS",sign:-1,weight:.06,lag_days:0,
-source:"Dollar-Smile: Straffung=USD-Bid"},{name:"US_JOBLESS_CLAIMS",sign:1,weight:.06,lag_days:0,source:"US-Wachstumsvorsprung → Zinskanal"},{name:"SURPRISE_USD",sign:1,weight:.06,lag_days:0,source:"Ist-vs-Konsens (Kalender)"}],NAS100:[{name:"US_REAL_10Y",sign:-1,weight:.25,lag_days:0,
+source:"Dollar-Smile: Straffung=USD-Bid"},{name:"US_JOBLESS_CLAIMS",sign:1,weight:.06,lag_days:0,source:"US-Wachstumsvorsprung → Zinskanal"},{name:"SURPRISE_USD",sign:1,weight:.06,lag_days:0,source:"Ist-vs-Konsens (Kalender)"}],NAS100:[{name:"US_REAL_10Y",sign:-1,weight:.2,lag_days:0,
 source:"Hanson-Stein 2015 duration"},{name:"VIX",sign:-1,weight:.11,lag_days:0,source:"Whaley 1993"},{name:"SEMIS_SOX",sign:1,weight:.13,lag_days:0,source:"SOX leads NDX 1mo"},{name:"MOVE",sign:-1,weight:.08,lag_days:0,source:"Bauer 2023 rate-vol"},{name:"US_HY_OAS",sign:-1,weight:.08,lag_days:0,
 source:"Gilchrist-Zakrajsek 2012"},{name:"FED_RATE_SURPRISE",sign:-1,weight:.09,lag_days:1,source:"Bernanke-Kuttner 2005"},{name:"AI_CAPEX_PROXY",sign:1,weight:.06,lag_days:5,source:"NVDA-MSFT capex"},{name:"DXY",sign:-1,weight:.05,lag_days:0,source:"foreign earnings translation"},{
 name:"YIELD_CURVE_10Y3M",sign:1,weight:.09,lag_days:0,source:"Estrella-Mishkin Kurve"},{name:"VIX_CONTANGO",sign:1,weight:.06,lag_days:0,source:"Johnson 2017 VIX-Term"},{name:"US_FIN_CONDITIONS",sign:1,weight:.09,lag_days:0,source:"Chicago Fed NFCI/ANFCI"},{name:"US_JOBLESS_CLAIMS",sign:1,
@@ -8092,8 +8092,8 @@ localStorage.setItem(r,JSON.stringify(e))}catch(e){window.DEBUG&&console.warn("[
 console.log("[FACTOR_STATS] reset")}
 ;const _=new Set(["HY_OAS","US_HY_OAS","US_HOUSING","CHINA_CREDIT_IMPULSE","US_LABOR","US_ISM_MFG","GLOBAL_DOLLAR_LIQUIDITY","YIELD_CURVE_10Y3M","VIX_CONTANGO","US_JOBLESS_CLAIMS","US_CAPEX_ORDERS","US_FIN_CONDITIONS","US_CREDIT_TIGHTENING","US_TEMP_HELP","US_MFG_HOURS","EU_HY_OAS"]),c=new Set(["CHINA_PMI","IRON_ORE","GLOBAL_PMI","EU_PMI_COMP","EU_PMI_MFG","UK_PMI_SERVICES","JP_CA_SURPLUS","UK_CA_DEFICIT","EU_TERMS_OF_TRADE","AI_CAPEX_PROXY","SEMIS_SOX","SOLAR_PV_DEMAND","EV_GREEN_CAPEX","CHILE_SUPPLY_DISRUPT","WCS_BRENT_DIFF","LME_INVENTORY"]),u=new Set(["BOE_RATE_SURPRISE","SNB_RATE_SURPRISE","RBA_RATE_SURPRISE","RBNZ_RATE_SURPRISE","BOC_RATE_SURPRISE"])
 ;function biasWeightMult(e){return _.has(e)||0===e.indexOf("OECD:")&&e.indexOf(":CLI")>0||"EU_YIELD_CURVE"===e||"UK_YIELD_CURVE"===e||"CA_YIELD_CURVE"===e?1.4:c.has(e)||u.has(e)?.5:"VIX"===e?.85:1}const g={USD:{g:.25,i:.1},EUR:{g:.25,i:-.05},GBP:{g:.25,i:-.05},JPY:{g:-.45,i:-.1},CHF:{g:-.35,i:0},
-AUD:{g:.5,i:.3},NZD:{g:.5,i:.3},CAD:{g:.45,i:.35},NAS100:{g:.5,i:-.35},SPX500:{g:.55,i:-.2},GER40:{g:.55,i:-.2},FTSE:{g:.45,i:.05},XAU:{g:-.2,i:.45},XAG:{g:.2,i:.45},XCU:{g:.55,i:.3},WTI:{g:.5,i:.35},NGAS:{g:.3,i:.3},ZW:{g:.15,i:.3},ZC:{g:.15,i:.3},ZS:{g:.15,i:.3},KC:{g:.15,i:.25},SB:{g:.15,i:.25},
-CC:{g:.15,i:.25},CT:{g:.2,i:.25},BTC:{g:.45,i:0},ETH:{g:.45,i:0},SOL:{g:.45,i:0}};function computeClassScoresFactorModel(e,a){
+AUD:{g:.5,i:.3},NZD:{g:.5,i:.3},CAD:{g:.45,i:.35},NAS100:{g:.5,i:-.18},SPX500:{g:.55,i:-.15},GER40:{g:.55,i:-.15},FTSE:{g:.45,i:.05},XAU:{g:-.2,i:.45},XAG:{g:.2,i:.45},XCU:{g:.55,i:.3},WTI:{g:.5,i:.35},NGAS:{g:.3,i:.3},ZW:{g:.15,i:.3},ZC:{g:.15,i:.3},ZS:{g:.15,i:.3},KC:{g:.15,i:.25},SB:{g:.15,i:.25
+},CC:{g:.15,i:.25},CT:{g:.2,i:.25},BTC:{g:.45,i:0},ETH:{g:.45,i:0},SOL:{g:.45,i:0}};function computeClassScoresFactorModel(e,a){
 const s={},l={},r={},o=["USD","EUR","GBP","JPY","CHF","AUD","NZD","CAD","NAS100","SPX500","GER40","FTSE","XAU","XAG","XCU","WTI","NGAS","ZW","ZC","ZS","KC","SB","CC","CT","BTC","ETH","SOL"];for(const a of o){const o=t[a];if(!o){s[a]=0;continue}let i=0,_=0;const c=[],u=new Set;for(const a of o){
 if(u.has(a.name))continue;let l
 ;if(u.add(a.name),l="BTC"===a.name&&null!=s.BTC?2*s.BTC:"ETH"===a.name&&null!=s.ETH?2*s.ETH:"XAU"===a.name&&null!=s.XAU?2*s.XAU:"EUR"===a.name&&null!=s.EUR?2*s.EUR:"GBP"===a.name&&null!=s.GBP?2*s.GBP:"NAS100"===a.name&&null!=s.NAS100?2*s.NAS100:mapDriverToFactor(a.name,e),null==l)continue
