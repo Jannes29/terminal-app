@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-08-03-E';
+  var BUILD_ID = '2026-08-03-F';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -2514,6 +2514,8 @@
 
   /* --- Buttons/Pills einheitlich --- */
   button, .pro-tab{ letter-spacing:0.2px!important; }
+  /* --- Tote Tavily-Quota-Anzeige ausblenden (Dienst offline, durch GDELT ersetzt) --- */
+  #tavilyBadge{ display:none!important; }
 </style>
 </head>
 <body>
@@ -4207,8 +4209,8 @@ n.filter(e=>e.rateFred).forEach(e=>{fetchFred(e.rateFred).then(n=>{null!=n&&(l[e
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
       <div style="display:flex;align-items:center;gap:10px;">
         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#a855f7;box-shadow:0 0 12px #a855f7;animation:pulse 1.4s infinite;"></span>
-        <strong style="font-size:13px;letter-spacing:1.5px;color:var(--accent);">AI RESEARCH HUB</strong>
-        <span style="font-size:11px;color:var(--muted);">· Tavily Web-Search · Real-time Macro & Asset News</span>
+        <strong style="font-size:13px;letter-spacing:1.5px;color:var(--accent);">RESEARCH HUB</strong>
+        <span style="font-size:11px;color:var(--muted);">· GDELT News-Feed · Live Macro &amp; Asset News</span>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;" id="researchPresets">
         <button class="rsh-btn" data-q="macro markets today fed inflation">Macro</button>
@@ -10142,7 +10144,7 @@ play:"<b>Risk-Off.</b> Anleihen &gt; Aktien · USD &gt; Risiko · Defensiv &gt; 
 if(!e||e.length<2)return""
 ;const o=Math.min(...e),l=Math.max(...e),r=l-o||1,s="pct"===n&&o<0&&l>0?0:e.reduce((e,t)=>e+t,0)/e.length,y=e=>102-(e-o)/r*96,a=e.map((t,n)=>`${(t=>4+t/(e.length-1)*312)(n).toFixed(1)},${y(t).toFixed(1)}`).join(" "),d=`4,${102..toFixed(1)} ${a} ${316..toFixed(1)},${102..toFixed(1)}`,c=e[e.length-1],g=i||("pct"===n?c>=0?"#34d399":"#f87171":"#38bdf8"),m="sg"+Math.random().toString(36).slice(2,8)
 ;let h="";[.25,.5,.75].forEach(e=>{const t=(6+96*e).toFixed(1);h+=`<line x1="4" y1="${t}" x2="316" y2="${t}" stroke="rgba(255,255,255,0.055)" stroke-width="1" vector-effect="non-scaling-stroke"/>`});const u=y(s).toFixed(1)
-;return`<div style="border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:linear-gradient(180deg,rgba(20,28,48,0.5),rgba(15,23,41,0.25));">\n      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">\n        <span style="font-size:11px;color:var(--text-2);font-weight:600;letter-spacing:0.3px;">${t}</span>\n        <span style="font-size:15px;color:${g};font-weight:800;">${c.toFixed(1)+("pct"===n?"%":"")}</span></div>\n      <div style="position:relative;">\n        <svg width="100%" height="72" viewBox="0 0 320 108" preserveAspectRatio="none" style="display:block;">\n          <defs><linearGradient id="${m}" x1="0" x2="0" y1="0" y2="1">\n            <stop offset="0%" stop-color="${g}" stop-opacity="0.30"/><stop offset="100%" stop-color="${g}" stop-opacity="0.02"/></linearGradient></defs>\n          ${h}\n          <line x1="4" y1="${u}" x2="316" y2="${u}" stroke="rgba(255,255,255,0.28)" stroke-width="1" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>\n          <polygon points="${d}" fill="url(#${m})"/>\n          <polyline points="${a}" fill="none" stroke="${g}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>\n        </svg>\n        <span style="position:absolute;top:-2px;left:2px;font-size:9px;color:var(--text-2);opacity:0.6;">${l.toFixed(1)}</span>\n        <span style="position:absolute;bottom:-2px;left:2px;font-size:9px;color:var(--text-2);opacity:0.6;">${o.toFixed(1)}</span>\n      </div>\n      <div style="font-size:9px;color:var(--text-2);opacity:0.55;margin-top:3px;text-align:right;">letzte ${e.length} Monate</div>\n    </div>`
+;return`<div style="border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:linear-gradient(180deg,rgba(20,28,48,0.5),rgba(15,23,41,0.25));">\n      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">\n        <span style="font-size:11px;color:var(--text-2);font-weight:600;letter-spacing:0.3px;">${t}</span>\n        <span style="font-size:15px;color:${g};font-weight:800;">${c.toFixed(1)+("pct"===n?"%":"")}</span></div>\n      <div style="position:relative;display:flex;">\n        <div style="display:flex;flex-direction:column;justify-content:space-between;width:34px;flex:0 0 34px;font-size:8.5px;color:var(--text-2);opacity:0.5;padding:2px 4px 2px 0;text-align:right;">\n          <span>${l.toFixed(1)}</span><span>${o.toFixed(1)}</span>\n        </div>\n        <svg width="100%" height="72" viewBox="0 0 320 108" preserveAspectRatio="none" style="display:block;flex:1;">\n          <defs><linearGradient id="${m}" x1="0" x2="0" y1="0" y2="1">\n            <stop offset="0%" stop-color="${g}" stop-opacity="0.30"/><stop offset="100%" stop-color="${g}" stop-opacity="0.02"/></linearGradient></defs>\n          ${h}\n          <line x1="4" y1="${u}" x2="316" y2="${u}" stroke="rgba(255,255,255,0.28)" stroke-width="1" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>\n          <polygon points="${d}" fill="url(#${m})"/>\n          <polyline points="${a}" fill="none" stroke="${g}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>\n        </svg>\n      </div>\n      <div style="font-size:9px;color:var(--text-2);opacity:0.55;margin-top:3px;text-align:right;">letzte ${e.length} Monate</div>\n    </div>`
 }function pushGrid(){const{gScore:e,iScore:t}=compute();return null!=e&&null!=t&&(window.MACRO_GRID={growth:e,inflation:t,regime:regimeOf(e,t),ts:Date.now()}),{gScore:e,iScore:t}}function render(){const e=document.getElementById("mdRegimeBanner");if(!e)return
 ;const{g:t,inf:i,gScore:o,iScore:l}=compute();if(null==o||null==l)return;window.MACRO_GRID={growth:o,inflation:l,regime:regimeOf(o,l),ts:Date.now()};const r=regimeOf(o,l),s=n[r];document.getElementById("mdRegimeName").textContent=r,document.getElementById("mdRegimeName").style.color=s.c,
 document.getElementById("mdRegimeSub").innerHTML=s.desc+` &nbsp;·&nbsp; Growth-Momentum <b style="color:${o>=0?"#22c55e":"#ef4444"}">${o>=0?"+":""}${o.toFixed(2)}</b> · Inflation-Momentum <b style="color:${l>=0?"#f59e0b":"#60a5fa"}">${l>=0?"+":""}${l.toFixed(2)}</b>`,e.style.borderColor=s.c,
@@ -10157,10 +10159,10 @@ document.getElementById("mdPlaybook").innerHTML=`<div style="font-size:15px;font
 ;x+=`<tr><td class="sym" style="text-align:left;">${e.lbl}</td><td style="color:var(--text-2)">${e.cls}</td>\n        <td>${t.now.toFixed(1)}</td><td>${t.m3.toFixed(1)}</td><td>${t.m6.toFixed(1)}</td>\n        <td>${null!=t.yoy?(t.yoy>=0?"+":"")+t.yoy.toFixed(1)+"%":"—"}</td>\n        <td style="color:${n=t.impulse,
 n>=2?"#22c55e":1===n?"#4ade80":-1===n?"#fb923c":"#ef4444"};font-weight:700;">${(e=>2===e?"↑↑ stark besch.":1===e?"↑ beschleunigt":-1===e?"↓ verlangsamt":"↓↓ stark verlangs.")(t.impulse)}</td></tr>`}),x+="</tbody></table>",document.getElementById("mdRocTable").innerHTML=x;const v=cache(),yoyOf=e=>{
 const t=v[e];if(!t||!t.raw||t.raw.length<13)return null;const n=t.raw,i=[];for(let e=12;e<n.length;e++)n[e-12].val&&i.push(100*(n[e].val/n[e-12].val-1));return i.length?i:null},$=yoyOf("INDPRO"),I=yoyOf("PCEPILFE")
-;document.getElementById("mdComposites").innerHTML=($?spark($.slice(-24),"Industrieproduktion YoY · Wachstums-Proxy","pct","#38bdf8"):"")+'<div style="height:10px"></div>'+(I?spark(I.slice(-24),"Kern-PCE YoY · Inflations-Proxy","pct","#f59e0b"):"");let k=""
+;document.getElementById("mdComposites").innerHTML=($?spark($.slice(-24),"Industrieproduktion YoY · Wachstums-Proxy","pct","#38bdf8"):"")+'<div style="height:10px"></div>'+(I?spark(I.slice(-24),"Kern-PCE YoY · Inflations-Proxy","pct","#f59e0b"):"");let w=""
 ;[["INDPRO","Industrieproduktion YoY","pct",!0],["RSAFS","Einzelhandel YoY","pct",!0],["NEWORDER","Investitionsaufträge YoY","pct",!0],["PERMIT","Baugenehmigungen (Tsd.)","idx",!1],["IC4WSA","Erstanträge (Personen)","idx",!1],["PAYEMS","Beschäftigung YoY","pct",!0]].forEach(([e,t,n,i])=>{
 const o=v[e];if(!o||!o.raw||!o.raw.length)return;let l=o.raw.map(e=>e.val);if(i&&l.length>=13){const e=[];for(let t=12;t<o.raw.length;t++)o.raw[t-12].val&&e.push(100*(o.raw[t].val/o.raw[t-12].val-1));l=e}if(l.length<2)return
-;const r=/IC4WSA/.test(e)?"#fb923c":"pct"===n?l[l.length-1]>=0?"#34d399":"#f87171":"#38bdf8";k+=spark(l.slice(-24),t,n,r)}),document.getElementById("mdCharts").innerHTML=k||'<div style="color:var(--text-2);font-size:11px;">FRED-Serien laden…</div>';try{!function renderBriefing(e,t,n,i,o,l){
+;const r=/IC4WSA/.test(e)?"#fb923c":"pct"===n?l[l.length-1]>=0?"#34d399":"#f87171":"#38bdf8";w+=spark(l.slice(-24),t,n,r)}),document.getElementById("mdCharts").innerHTML=w||'<div style="color:var(--text-2);font-size:11px;">FRED-Serien laden…</div>';try{!function renderBriefing(e,t,n,i,o,l){
 const r=document.getElementById("mdBriefing");if(!r)return;const s=regimeHistory(12);let a="";if(s.length>=2){let e=null,t=null;for(let t=1;t<s.length;t++)s[t].regime!==s[t-1].regime&&(e=s[s.length-1].ago);const n=s[s.length-1].regime;let i=0;for(let e=s.length-1;e>=0;e--){if(s[e].regime!==n){
 t=s[e].regime;break}i=s[e].ago}a=t?`Das Regime hält seit <b>${i} Monaten</b> (davor: ${t}).`:`Das Regime ist seit ≥12 Monaten stabil <b>${n}</b>.`}const d=n>=0?"beschleunigt":"verlangsamt",c=i>=0?"steigt":"fällt",g=function biasFromCards(){const e=[]
 ;return document.querySelectorAll(".bias-card").forEach(t=>{const n=t.querySelector(".bias-card-head .sym"),i=t.querySelector(".bias-card-head .nm"),o=t.querySelectorAll(".bias-cell .val");if(!n||!o.length)return;const l=parseInt(o[0]&&o[0].textContent,10);isNaN(l)||e.push({sym:n.textContent.trim(),
