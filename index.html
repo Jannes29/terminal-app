@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-08-03-G';
+  var BUILD_ID = '2026-08-03-H';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -45,8 +45,8 @@
     --text-0: #f1f5f9;
     --text-1: #cbd5e1;
     --text-2: #64748b;
-    --accent: #22d3ee;
-    --accent-2: #a78bfa;
+    --accent: #38bdf8;
+    --accent-2: #3b82f6;
     --green: #22c55e;
     --red: #ef4444;
     --amber: #f59e0b;
@@ -2526,6 +2526,27 @@
   button, .pro-tab{ letter-spacing:0.2px!important; }
   /* --- Tote Tavily-Quota-Anzeige ausblenden (Dienst offline, durch GDELT ersetzt) --- */
   #tavilyBadge{ display:none!important; }
+
+  /* ===== Palette-Disziplin & Komponenten-Feinschliff ===== */
+  /* Glows/Schatten terminweit reduzieren (institutioneller, flacher Look) */
+  .brand-logo,.panel,.bias-card,.day-card,.stat-tile,.mac-tile,.mac-dp-tile{ box-shadow:none!important; }
+  [style*="text-shadow"]{ text-shadow:none!important; }
+  /* Panel-Kopfzeilen einheitlich, ruhig */
+  .panel-title{ letter-spacing:1px!important; font-weight:600!important; color:#cdd8ea!important; }
+  .panel-title::before{ background:var(--accent)!important; box-shadow:none!important; width:3px!important; }
+  /* Pills/Chips einheitlich (Research-Hub, Filter, Sentiment, Chart-Symbole) */
+  .rsh-btn,.sent-tab,.bq-chip,.filter-chip,.tt-fchip,.pd-fchip,.eq-toggle{
+    background:rgba(255,255,255,0.035)!important; border:1px solid rgba(255,255,255,0.09)!important;
+    color:#a7b6cc!important; border-radius:7px!important; box-shadow:none!important; letter-spacing:0.2px!important;
+  }
+  .rsh-btn:hover,.sent-tab:hover,.bq-chip:hover,.filter-chip:hover{ background:rgba(255,255,255,0.07)!important; color:#e6eefb!important; }
+  .rsh-btn.active,.sent-tab.active,.bq-chip.active,.filter-chip.active,.sent-tab[class*="active"]{
+    background:rgba(56,189,248,0.15)!important; border-color:rgba(56,189,248,0.5)!important; color:#eaf6ff!important;
+  }
+  /* Marken-Logo/Titel ruhiger (kein greller Verlauf) */
+  .brand-title span{ -webkit-text-fill-color:var(--accent)!important; background:none!important; color:var(--accent)!important; }
+  /* Fear&Greed-Zahl ohne Neon-Glow */
+  #cnn-value,[id*="gauge"] text{ filter:none!important; }
 </style>
 </head>
 <body>
