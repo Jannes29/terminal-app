@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-08-03-D';
+  var BUILD_ID = '2026-08-03-E';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -2480,9 +2480,40 @@
     font-size:10px!important; letter-spacing:0.2px!important; text-transform:none!important;
     color:var(--text-2)!important; opacity:0.85;
   }
-  .powers-badge{ text-transform:none!important; letter-spacing:0.2px!important; opacity:0.65!important; font-weight:500!important; }
-  /* dezentere Karten-Ränder überall */
-  .bias-card, .section > div[style*="border"]{ }
+  .powers-badge{ text-transform:none!important; letter-spacing:0.2px!important; opacity:0.6!important; font-weight:500!important; background:rgba(255,255,255,0.04)!important; border:1px solid rgba(255,255,255,0.06)!important; color:var(--text-2)!important; }
+
+  /* --- Ruhiger Hintergrund (statt Neon-Blobs) --- */
+  body{ background: radial-gradient(1200px 700px at 88% -8%, rgba(56,189,248,0.028), transparent 60%), var(--bg-0)!important; }
+  /* --- Tabellarische Ziffern überall (Finanz-Standard) --- */
+  html,body,.bias-card,.data-table,.stat-tile,.panel{ font-variant-numeric: tabular-nums; font-feature-settings:"tnum" 1,"cv01" 1; }
+
+  /* --- Einheitliche, ruhige Karten (kein Neon-Glow) --- */
+  .bias-card,.day-card{
+    background: linear-gradient(180deg, rgba(20,28,46,0.55), rgba(13,19,34,0.55))!important;
+    border:1px solid rgba(255,255,255,0.065)!important; border-radius:11px!important;
+  }
+  .bias-card:hover,.day-card:hover{
+    transform: translateY(-2px)!important; border-color: rgba(56,189,248,0.35)!important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4)!important;
+  }
+  .bias-card-head{ background: rgba(255,255,255,0.018)!important; border-bottom:1px solid rgba(255,255,255,0.055)!important; }
+  .bias-card-head .sym{ font-weight:700!important; letter-spacing:0.4px!important; font-size:15px!important; }
+  .bias-card-head .nm{ opacity:0.75; }
+
+  /* --- Tabellen refined --- */
+  .data-table th{ text-transform:none!important; letter-spacing:0.2px!important; color:var(--text-2)!important; font-weight:600!important; border-bottom:1px solid rgba(255,255,255,0.07)!important; }
+  .data-table td{ border-bottom:1px solid rgba(255,255,255,0.04)!important; }
+  .data-table tr:hover td{ background: rgba(56,189,248,0.03)!important; }
+
+  /* --- Glows/Text-Shadows terminweit dämpfen --- */
+  .stat-tile,.panel,.mac-dp-tile,.mac-tile{ box-shadow:none!important; border:1px solid rgba(255,255,255,0.06)!important; }
+  h1,h2,h3{ text-shadow:none!important; }
+
+  /* --- Top-Banner (Marktstatus) dezenter --- */
+  .subnav{ border-bottom:1px solid rgba(255,255,255,0.06)!important; }
+
+  /* --- Buttons/Pills einheitlich --- */
+  button, .pro-tab{ letter-spacing:0.2px!important; }
 </style>
 </head>
 <body>
