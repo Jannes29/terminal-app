@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-08-03-C';
+  var BUILD_ID = '2026-08-03-D';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -2460,6 +2460,29 @@
     --surface-2: rgba(0,0,0,0.30);
     --border-soft: rgba(31,42,68,0.6);
   }
+
+  /* ===== PROFESSIONAL POLISH (Hedgefonds/Bloomberg-Ästhetik · ruhige Typografie) ===== */
+  .section-head{ border-bottom:1px solid rgba(255,255,255,0.06)!important; padding-bottom:10px!important; margin-bottom:18px!important; }
+  .section-head::after{ display:none!important; }
+  .section-head h2{
+    font-size:14px!important; font-weight:600!important; letter-spacing:0.3px!important;
+    text-transform:none!important; color:#dfe6f2!important; gap:9px!important; line-height:1.35!important;
+  }
+  .section-head h2::before{
+    width:3px!important; height:14px!important; background:var(--accent)!important;
+    box-shadow:none!important; border-radius:1px!important; opacity:0.9!important;
+  }
+  .section-head h2 em{
+    font-style:normal!important; -webkit-text-fill-color:currentColor!important;
+    background:none!important; color:#fff!important; font-weight:700!important;
+  }
+  .section-head .meta{
+    font-size:10px!important; letter-spacing:0.2px!important; text-transform:none!important;
+    color:var(--text-2)!important; opacity:0.85;
+  }
+  .powers-badge{ text-transform:none!important; letter-spacing:0.2px!important; opacity:0.65!important; font-weight:500!important; }
+  /* dezentere Karten-Ränder überall */
+  .bias-card, .section > div[style*="border"]{ }
 </style>
 </head>
 <body>
@@ -10190,15 +10213,22 @@ cnt:t.cnt}))}catch(e){}apply(t)}else try{const t=JSON.parse(localStorage.getItem
     if(!recs.length){ el.innerHTML='<span style="color:var(--text-2);font-size:12px;">Noch keine Vorhersagen eingefroren — Bias &amp; Preise laden…</span>'; return; }
     const dates=recs.map(r=>r.d).sort();
     const since=dates[0];
-    const agg={30:{n:0,w:0},60:{n:0,w:0},90:{n:0,w:0}};
+    const agg={30:{n:0,w:0},60:{n:0,w:0},90:{n:0,w:0}}, pend={30:0,60:0,90:0}, soon={30:1e9,60:1e9,90:1e9};
     let frozen=0;
-    recs.forEach(r=>{ frozen++; [30,60,90].forEach(h=>{ const v=r.sc[h]; if(v===0||v===1){ agg[h].n++; agg[h].w+=v; } }); });
-    const tile=(h)=>{ const a=agg[h]; const wr=a.n?(100*a.w/a.n):null; const reif=a.n>=15;
-      const col=wr==null?'#64748b':(wr>=55?'#22c55e':wr>=50?'#eab308':'#ef4444');
-      return `<div style="flex:1;min-width:150px;border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center;">
-        <div style="font-size:11px;color:var(--text-2);">${h}-Tage-Horizont</div>
-        <div style="font-size:26px;font-weight:800;color:${col};margin:4px 0;">${wr!=null?wr.toFixed(0)+'%':'—'}</div>
-        <div style="font-size:10px;color:var(--text-2);">${a.n} reife Vorhersagen${reif?'':' · reift noch'}</div></div>`; };
+    recs.forEach(r=>{ frozen++; [30,60,90].forEach(h=>{ const v=r.sc[h];
+      if(v===0||v===1){ agg[h].n++; agg[h].w+=v; }
+      else if(v==null){ pend[h]++; const d=Math.ceil((h*DAY-(Date.now()-r.ts))/DAY); if(d>0&&d<soon[h]) soon[h]=d; } }); });
+    const tile=(h)=>{ const a=agg[h], wr=a.n?(100*a.w/a.n):null, reif=a.n>=15;
+      const col=wr==null?'#5b6b86':(wr>=55?'#34d399':wr>=50?'#eab308':'#f87171');
+      const pct=Math.max(0,Math.min(100, wr!=null? (a.n/Math.max(a.n,15)*100) : (pend[h]? (1-Math.min(1,(soon[h]===1e9?h:soon[h])/h))*100 : 0)));
+      const sub = wr!=null ? `${a.n} reife Vorhersagen${reif?'':' · noch dünn'}`
+                : (pend[h]? `sammelt · ${pend[h]} offen · erste in ~${soon[h]===1e9?h:soon[h]} T` : 'sammelt Daten');
+      const big = wr!=null ? wr.toFixed(0)+'%' : '<span style="font-size:16px;color:#5b6b86;font-weight:600;">läuft</span>';
+      return `<div style="flex:1;min-width:150px;border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center;background:linear-gradient(180deg,rgba(20,28,48,0.4),rgba(15,23,41,0.15));">
+        <div style="font-size:10px;color:var(--text-2);letter-spacing:0.4px;">${h}-TAGE-HORIZONT</div>
+        <div style="font-size:28px;font-weight:800;color:${col};margin:6px 0 4px;">${big}</div>
+        <div style="height:3px;border-radius:3px;background:rgba(255,255,255,0.06);overflow:hidden;margin:6px 2px 8px;"><div style="height:100%;width:${pct.toFixed(0)}%;background:${col};opacity:0.7;"></div></div>
+        <div style="font-size:10px;color:var(--text-2);">${sub}</div></div>`; };
     const totalMatured=agg[30].n+agg[60].n+agg[90].n;
     el.innerHTML=
       `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">${tile(30)}${tile(60)}${tile(90)}</div>`+
