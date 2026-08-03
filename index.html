@@ -13,7 +13,7 @@
    verglichen; ist online eine neuere Version, laedt sich die Seite einmal frisch nach.
    Beim Hochladen einer neuen Version diese BUILD_ID hochzaehlen. */
 (function(){
-  var BUILD_ID = '2026-08-03-H';
+  var BUILD_ID = '2026-08-03-I';
   window.__BUILD_ID = BUILD_ID;
   try {
     var done = sessionStorage.getItem('__build_checked');
@@ -10306,6 +10306,15 @@ cnt:t.cnt}))}catch(e){}apply(t)}else try{const t=JSON.parse(localStorage.getItem
         `<b>Der ehrlichste Test:</b> Das ist <b>kein</b> Backtest und keine Optimierung, sondern echte Out-of-Sample-Zukunft des aktuellen Live-Modells. `+
         `Aussagekräftig ab ~15–20 reifen Vorhersagen je Horizont. FX-Währungen folgen (brauchen Index-Proxies). Erwartungsrahmen: ~52–56% — alles darüber wäre außergewöhnlich.</div>`;
   }
+  // Emoji aus Navigations-Tabs entfernen (institutioneller, ruhiger Look)
+  function stripNavEmoji(){
+    try{ document.querySelectorAll('.subnav a').forEach(a=>{
+      const t=a.textContent.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{FE00}-\u{FE0F}\u{2605}\u{2606}\u{26A1}\u{2728}]/gu,'').replace(/\s{2,}/g,' ').trim();
+      if(t && t!==a.textContent) a.textContent=t;
+    }); }catch(e){}
+  }
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(stripNavEmoji,300));
+  setTimeout(stripNavEmoji, 2500);
   window.fwdValRecord=record; window.fwdValReset=()=>{ localStorage.removeItem(KEY); render({recs:[]}); };
   window.addEventListener('macroUpdate', ()=>{ setTimeout(record, 500); });
   setTimeout(record, 20000);          // initial nach Laden der Bias-Karten
